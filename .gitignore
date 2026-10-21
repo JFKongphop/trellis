@@ -1,0 +1,26 @@
+# Rust
+target/
+**/*.rs.bk
+
+# Node / Next.js
+node_modules/
+.next/
+out/
+*.tsbuildinfo
+next-env.d.ts
+
+# Env and secrets
+.env
+.env.*
+!.env.example
+*.key
+*-key.json
+.near-credentials/
+
+# OS / editors
+.DS_Store
+.vscode/
+.idea/
+
+# Claude local settings
+.claude/settings.local.json
