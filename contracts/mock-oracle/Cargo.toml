@@ -1,0 +1,19 @@
+[package]
+name = "mock-oracle"
+description = "Test-only stand-in for aggregate-oracle.near (Pyth-style get_price_no_older_than that honors age)"
+version = "0.1.0"
+edition.workspace = true
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+near-sdk = { workspace = true }
+
+[dev-dependencies]
+near-sdk = { workspace = true, features = ["unit-testing"] }
+
+[lints.rust.unexpected_cfgs]
+level = "warn"
+check-cfg = ['cfg(near)']
