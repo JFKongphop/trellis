@@ -1,0 +1,4 @@
+[env]
+# Each sandbox test runs its own NEAR node; more than ~3 at once makes their RPC time out
+# ("unable to fulfill the query request"). Override with `-- --test-threads=N`.
+RUST_TEST_THREADS = "3"
