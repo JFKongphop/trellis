@@ -1,0 +1,369 @@
+@import "tailwindcss";
+
+@theme {
+  /* ─── Palette — Amplemarket (DESIGN.md) ─────────────────── */
+  --color-midnight-ink: #111111;
+  --color-canvas: #f6f5f3; /* page base (off-white) — L0 */
+  --color-canvas-white: #ffffff; /* cards (L1) + text on dark fills */
+  --color-whisper-gray: #f4f3ef; /* nested recess (L2) — inside white cards only */
+  --color-light-taupe: #ecebea;
+  --color-muted-ash: #6d6c6b;
+  --color-surface-charcoal: #272625;
+  --color-deep-indigo: #10054d;
+  --color-midnight-violet: #2e2460;
+  --color-hairline: rgba(17, 17, 17, 0.05);
+
+  /* Pillar accents — small functional accents only (tags, dots, icons) */
+  --color-deliver-green: #47d096; /* positive / yield / APY / success */
+  --color-engagement-gold: #fbc768; /* warning / flag / pending        */
+  --color-lead-gen-red: #e16540; /* error / block / destructive        */
+  --color-intelligence-blue: #328efa; /* info                          */
+
+  /* Hero gradient blobs read the accent palette directly (Intelligence Blue /
+   * Deliver Green / Engagement Gold) — see parts/gradient-field.tsx. */
+
+  /* Soft decorative accent stops (accent cards) */
+  /* Trellis brand glow (from alpha402): warm orange → violet → pink washes,
+   * orange + purple for hero keywords. Status colors above stay unchanged. */
+  --color-glow-orange: #f97316;
+  --color-glow-violet: #8b6fc7;
+  --color-glow-pink: #ec4899;
+  --color-brand-orange: #ee7b3d;
+  --color-brand-purple: #b04fc7;
+
+  --color-petal-pink: #ffd7f0;
+  --color-mint-green: #b7efb2;
+  --color-canary-yellow: #ffef99;
+  --color-subtle-lavender: #e2ddfd;
+
+  /* ─── Semantic mapping (shadcn / dapp-kit primitives) ───── */
+  --color-background: var(--color-canvas);
+  --color-foreground: var(--color-midnight-ink);
+  --color-card: var(--color-canvas-white);
+  --color-card-foreground: var(--color-midnight-ink);
+  --color-popover: var(--color-canvas-white);
+  --color-popover-foreground: var(--color-midnight-ink);
+  --color-primary: var(--color-midnight-ink);
+  --color-primary-foreground: var(--color-canvas-white);
+  --color-secondary: var(--color-whisper-gray);
+  --color-secondary-foreground: var(--color-deep-indigo);
+  --color-muted: var(--color-whisper-gray);
+  --color-muted-foreground: var(--color-muted-ash);
+  --color-accent: var(--color-whisper-gray);
+  --color-accent-foreground: var(--color-midnight-ink);
+  --color-destructive: var(--color-lead-gen-red);
+  --color-destructive-foreground: var(--color-canvas-white);
+  --color-warning: var(--color-engagement-gold);
+  --color-warning-foreground: var(--color-midnight-ink);
+  --color-success: var(--color-deliver-green);
+  --color-success-foreground: var(--color-midnight-ink);
+  --color-border: var(--color-hairline);
+  --color-input: var(--color-hairline);
+  --color-ring: var(--color-midnight-ink);
+
+  /* ─── Typography ────────────────────────────────────────── */
+  /* --font-brand = Labil Grotesk Variable (Variable.woff2 via next/font/local) */
+  /* --font-mono-brand = Sometype Mono (functional: hex/digests/tabular)        */
+  --font-sans: var(--font-brand), "Labil Grotesk Variable", Inter, ui-sans-serif,
+    system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: var(--font-mono-brand), "Sometype Mono", ui-monospace, "SF Mono",
+    Menlo, "Cascadia Code", monospace;
+
+  /* Per-size tracking — negative on display, positive on small (Amplemarket) */
+  --text-caption: 12px;
+  --text-caption--line-height: 1.5;
+  --text-caption--letter-spacing: 0.02em;
+  --text-body-sm: 14px;
+  --text-body-sm--line-height: 1.45;
+  --text-body-sm--letter-spacing: 0.015em;
+  --text-body: 16px;
+  --text-body--line-height: 1.5;
+  --text-body--letter-spacing: 0em;
+  --text-body-lg: 20px;
+  --text-body-lg--line-height: 1.3;
+  --text-body-lg--letter-spacing: -0.01em;
+  --text-display-sm: 36px;
+  --text-display-sm--line-height: 1.05;
+  --text-display-sm--letter-spacing: -0.025em;
+  --text-title: 32px;
+  --text-title--line-height: 1.1;
+  --text-title--letter-spacing: -0.02em;
+  --text-subhead: 48px;
+  --text-subhead--line-height: 1.1;
+  --text-subhead--letter-spacing: -0.03em;
+  --text-hero: clamp(40px, 5.4vw, 72px);
+  --text-hero--line-height: 1;
+  --text-hero--letter-spacing: -0.035em;
+  --text-display: clamp(48px, 7vw, 88px);
+  --text-display--line-height: 1;
+  --text-display--letter-spacing: -0.04em;
+
+  /* ─── Radii ─────────────────────────────────────────────────
+   * Design default is 12px (cards, inputs, badges, chips, images,
+   * dialogs). 8px is reserved for buttons + nav. Circles use the
+   * built-in `rounded-full`. */
+  --radius-card: 12px; /* → rounded-card */
+  --radius-button: 8px; /* → rounded-button (buttons / nav only) */
+  /* Tailwind/shadcn scale — default (md) is 12, NOT 8 */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 12px;
+  --radius-xl: 12px;
+
+  /* ─── Shadows — refero's three only; subtle + diluted ───────
+   * Never invent heavier shadows (refero: "do not add heavy/opaque
+   * shadows"). Floating elements (dialogs, menus, header) use
+   * --shadow-header; interactive elements use --shadow-button. */
+  --shadow-card: rgba(17, 17, 17, 0.02) 0 -6px 6px 0,
+    rgba(17, 17, 17, 0.01) 0 -23px 9px 0;
+  --shadow-header: rgba(17, 17, 17, 0.05) 0 0 1px 0,
+    rgba(17, 17, 17, 0.04) 1px 1px 1px 0, rgba(17, 17, 17, 0.03) 2px 3px 2px 0,
+    rgba(17, 17, 17, 0.01) 4px 4px 2px 0;
+  --shadow-button: rgba(17, 17, 17, 0.04) 0 1px 2px 0,
+    rgba(17, 17, 17, 0.04) 0 4px 8px 0;
+}
+
+:root {
+  color-scheme: light;
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  /* Always reserve the scrollbar track so the fixed header / centered layout
+   * doesn't shift between pages that scroll (portfolio) and pages that don't
+   * (home). overflow-y: scroll is honored across all browsers; scrollbar-gutter
+   * is the modern equivalent but lacks support in older Safari. */
+  overflow-y: scroll;
+  scrollbar-gutter: stable;
+}
+
+/* Transparent scrollbar track with a subtle, rounded Midnight-Ink thumb. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(17, 17, 17, 0.18) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: rgba(17, 17, 17, 0.18);
+  border-radius: 9999px;
+  border: 3px solid transparent;
+  background-clip: padding-box;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(17, 17, 17, 0.32);
+}
+
+/* Shimmer sweep for in-progress tool-call labels — a light glides across
+ * the text (muted-ash → midnight-ink → muted-ash) while the agent works. */
+@keyframes shimmer-sweep {
+  0% {
+    background-position: 150% 0;
+  }
+  100% {
+    background-position: -50% 0;
+  }
+}
+
+.shimmer-text {
+  background-image: linear-gradient(
+    100deg,
+    var(--color-muted-ash) 35%,
+    var(--color-midnight-ink) 50%,
+    var(--color-muted-ash) 65%
+  );
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: shimmer-sweep 1.6s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shimmer-text {
+    animation: none;
+    color: var(--color-muted-ash);
+  }
+}
+
+/* Animated brand gradient text — hero keywords. "Trellis" sweeps through the
+ * orange glow; "NEAR" through the purple. Repeating gradients (first color ==
+ * last) loop seamlessly. */
+/* Ping-pong sweep: background-position stays within 0–100% over an
+ * oversized (240%) gradient, so the image always covers the text and the
+ * sweep reverses instead of wrapping — no tiling seam at any gradient
+ * angle. ease-in-out makes it breathe rather than scroll. */
+@keyframes text-gradient-pan {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+.text-gradient-trellis,
+.text-gradient-near {
+  background-size: 240% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: text-gradient-pan 6s ease-in-out infinite;
+}
+/* Trellis — warm oranges, deep enough to stay readable on the off-white page. */
+.text-gradient-trellis {
+  background-image: linear-gradient(110deg, #d9622a, #ee7b3d, #f59a5b, #ee7b3d, #e8703a, #d9622a);
+}
+/* NEAR — magenta-leaning purples. */
+.text-gradient-near {
+  background-image: linear-gradient(110deg, #9a3fb3, #b04fc7, #c46ad8, #b04fc7, #8b6fc7, #9a3fb3);
+}
+@media (prefers-reduced-motion: reduce) {
+  .text-gradient-trellis,
+  .text-gradient-near {
+    animation: none;
+  }
+}
+
+/* Ambient page glow (alpha402): soft orange / violet / pink blobs drifting
+ * behind every page, plus a glow that trails the cursor. See
+ * components/parts/ambient-glow.tsx. */
+.ambient-glow {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+  background: radial-gradient(
+    600px circle at var(--mx, 80%) var(--my, 28%),
+    rgba(249, 115, 22, 0.14),
+    rgba(139, 111, 199, 0.1) 42%,
+    transparent 68%
+  );
+}
+.ambient-blob {
+  position: absolute;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  filter: blur(44px);
+  animation-name: ambient-float;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+}
+@keyframes ambient-float {
+  0%,
+  100% {
+    transform: translate(-50%, -50%) translate(0, 0);
+  }
+  25% {
+    transform: translate(-50%, -50%) translate(34px, -28px);
+  }
+  50% {
+    transform: translate(-50%, -50%) translate(-24px, 30px);
+  }
+  75% {
+    transform: translate(-50%, -50%) translate(26px, 20px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ambient-blob {
+    animation: none;
+  }
+}
+
+/* "Thinking" blob — morphs its organic shape, rotates, and breathes. CSS
+ * keyframes interpolate the 8-value border-radius smoothly (motion/JS does
+ * not). The gradient itself is set inline on the element. */
+.liquid-blob {
+  border-radius: 60% 40% 55% 45% / 55% 50% 50% 45%;
+  animation: blob-morph 4.5s ease-in-out infinite;
+  will-change: border-radius, transform;
+}
+@keyframes blob-morph {
+  0%,
+  100% {
+    border-radius: 60% 40% 55% 45% / 55% 50% 50% 45%;
+    transform: rotate(0deg) scale(1);
+  }
+  33% {
+    border-radius: 42% 58% 38% 62% / 50% 62% 38% 50%;
+    transform: rotate(120deg) scale(1.12);
+  }
+  66% {
+    border-radius: 52% 48% 62% 38% / 62% 44% 56% 38%;
+    transform: rotate(240deg) scale(0.9);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .liquid-blob {
+    animation: none;
+  }
+}
+
+
+
+body {
+  background: var(--color-canvas);
+  color: var(--color-midnight-ink);
+  font-family: var(--font-sans);
+  font-size: var(--text-body);
+  line-height: 1.5;
+  letter-spacing: 0;
+}
+
+/* Display headlines lean tighter still */
+.display-tight {
+  letter-spacing: -0.04em;
+}
+
+/* Expressive "alternate" display style — Labil Grotesk's dynamic/labil
+ * letterforms (Stability axis → 0) + stylistic set ss02. Opt-in; use on
+ * hero / display headlines, not body text. Registered as a Tailwind
+ * utility (`@utility`) so it gets IntelliSense autocomplete. */
+@utility font-alt {
+  font-variation-settings: "STBL" 0;
+  font-feature-settings: "ss02" on;
+}
+
+input,
+textarea,
+button,
+select {
+  font-family: inherit;
+  letter-spacing: inherit;
+}
+
+/* ─── Light surfaces ──────────────────────────────────────── */
+
+/* Elevated light card — Amplemarket "Card - Elevated Light":
+ * canvas-white fill, hairline ring, diluted shadow. */
+.surface-card {
+  background: var(--color-canvas-white);
+  box-shadow: 0 0 0 1px var(--color-hairline), var(--shadow-card);
+}
+
+/* Subtle panel — feature/logo cards, nested rows, chips. */
+.surface-panel {
+  background: var(--color-whisper-gray);
+}
+
+/* Dark inline info badge / dark input (used sparingly). */
+.surface-charcoal {
+  background: var(--color-surface-charcoal);
+  color: var(--color-canvas-white);
+}
+
+/* Hero gradient is a WebGL shader — see parts/gradient-field.tsx.
+ * The page base (#f6f5f3) shows through the transparent canvas (body bg).
+ * Confinement to the bottom-right corner is baked into the fragment shader
+ * (fading alpha by distance from a corner anchor) — tune it there. */
