@@ -1,0 +1,11 @@
+allowBuilds:
+  msw: true
+  sharp: true
+  unrs-resolver: true
+minimumReleaseAgeExclude:
+  - '@ai-sdk/openai-compatible@2.0.87'
+  - '@ai-sdk/provider-utils@4.0.62'
+onlyBuiltDependencies:
+  - sharp
+  - unrs-resolver
+  - msw
