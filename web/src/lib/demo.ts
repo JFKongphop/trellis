@@ -5,6 +5,8 @@
 const MODE = process.env.NEXT_PUBLIC_DEMO_MODE;
 export const DEMO = MODE === "1" || MODE === "replay";
 export const DEMO_REPLAY = MODE === "replay";
+/** Against the public testnet deployment: live (`pnpm demo:testnet`), or the replay of its recorded run. */
+export const DEMO_TESTNET = DEMO && process.env.NEXT_PUBLIC_NEAR_NETWORK === "testnet";
 
 export type DemoInfo = {
   accountId: string;
