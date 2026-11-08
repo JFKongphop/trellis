@@ -1,5 +1,6 @@
 "use client";
 
+import { ORACLE } from "@/lib/near/config";
 import { motion } from "motion/react";
 import { ShieldAlert, ShieldCheck, Shield } from "lucide-react";
 import { AssetIcon } from "@/components/asset-icon";
@@ -141,7 +142,7 @@ export function LendingPositionCard({
         </ul>
       )}
       <div className="px-3 pt-1 pb-2 text-[10px] uppercase tracking-wider text-muted-ash">
-        Prices: aggregate-oracle.near{p.pricesFresh ? "" : " (some stale)"}
+        Prices: {ORACLE}{p.pricesFresh ? "" : " (some stale)"}
       </div>
     </motion.div>
   );
