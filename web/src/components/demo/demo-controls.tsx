@@ -4,7 +4,7 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { FlaskConical, Loader2, TrendingDown, RotateCcw } from "lucide-react";
-import { DEMO, DEMO_REPLAY } from "@/lib/demo";
+import { DEMO, DEMO_REPLAY, DEMO_TESTNET } from "@/lib/demo";
 import { postJson } from "@/lib/near/client";
 import { useDemoInfo } from "@/lib/near/use-near-account";
 import { cn } from "@/lib/utils";
@@ -48,9 +48,13 @@ export function DemoControls() {
         </span>
       </div>
       <p className="text-caption leading-snug text-muted-ash">
-        {DEMO_REPLAY
+        {DEMO_REPLAY && DEMO_TESTNET
+          ? "Replay of the recorded NEAR testnet run (Rhea and Ref running their mainnet code; the agent's key held in OutLayer's TEE). \"Crash\" replays what the agent did when NEAR fell to $1.75: three protective moves a few seconds apart, inside your rules and with no signature from you. Each move's tx ↗ opens the real transaction on testnet.nearblocks.io. Nothing is signed here."
+          : DEMO_REPLAY
           ? "Replay of a recorded run of the live demo (real Rhea + Ref code in a local NEAR sandbox). \"Crash\" replays what the agent did when NEAR fell to $1.75: three protective moves a few seconds apart, inside your rules and with no signature from you. Watch the ⚡ banner, the activity list and the Feed page. Run `pnpm demo:live` to do it for real (needs more memory)."
-          : "Move the price the vault and Rhea read (the sandbox oracle). The agent checks every 3 seconds. When the health factor drops below 1.3 it withdraws a little collateral, swaps it to USDC and repays, all inside your rules and with no signature from you. Watch the activity list, the ⚡ banner and the Feed page."}
+          : DEMO_TESTNET
+            ? "Move the NEAR price the vault and Rhea read (our oracle on testnet; Rhea and Ref run their mainnet code). The agent, whose key is held in OutLayer's TEE, checks every 8 seconds. When the health factor drops below 1.3 it withdraws a little collateral, swaps it to USDC and repays, all inside your rules and with no signature from you. Every move is a public testnet transaction."
+            : "Move the price the vault and Rhea read (the sandbox oracle). The agent checks every 3 seconds. When the health factor drops below 1.3 it withdraws a little collateral, swaps it to USDC and repays, all inside your rules and with no signature from you. Watch the activity list, the ⚡ banner and the Feed page."}
       </p>
       <div className="flex flex-wrap gap-2">
         {PRESETS.map((p) => (
