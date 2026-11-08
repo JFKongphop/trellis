@@ -29,6 +29,9 @@ import { explorerTxUrl } from "@/lib/near/config";
 import { VAULT_TOKENS, policyToRules, rulesSummary } from "@/lib/vault-presets";
 import { cn } from "@/lib/utils";
 
+/** Vault failure notes that name one of the owner's rules (a refusal, not an error). */
+const RULE_NOTES = /^(min_health_factor|emergency_floor|per_action_cap|daily_cap|slippage|max_slippage|price_stale|price_confidence|pool_not_allowed|token_not_allowed)/;
+
 export default function VaultPage() {
   const { accountId, loading } = useNearAccount();
   const vaultOf = useVaultOf(accountId);
@@ -221,7 +224,7 @@ function Activity({ s }: { s: VaultState }) {
                   {r.origin === "plan" && <Tag>You approved</Tag>}
                 </div>
                 <div className="truncate text-caption text-muted-ash">
-                  {r.status === "Failed" ? `Failed${r.note ? `: ${r.note}` : ""}` : r.origin === "auto" && r.why ? r.why : r.note || "Settled"}
+                  {r.status === "Failed" ? `${r.note && RULE_NOTES.test(r.note) ? "Refused by your rules" : "Failed"}${r.note ? `: ${r.note}` : ""}` : r.origin === "auto" && r.why ? r.why : r.note || "Settled"}
                   {r.health_factor_bps && hfFromBps(r.health_factor_bps) !== null ? ` · HF ${hfFromBps(r.health_factor_bps)!.toFixed(2)}` : ""}
                 </div>
               </div>
