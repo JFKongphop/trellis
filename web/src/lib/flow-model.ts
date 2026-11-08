@@ -66,8 +66,8 @@ export function buildMoneyFlow(steps: FlowStepInput[], opts: FlowOptions): Money
     return id;
   };
   node(home, home, opts.mode === "vault" ? "Your vault" : "Your wallet");
-  const rhea = () => node("rhea", "rhea", "Rhea Lending", "contract.main.burrow.near");
-  const wrap = () => node("wrap", "wrap", "wrap.near", "NEAR ⇄ wNEAR");
+  const rhea = () => node("rhea", "rhea", "Rhea Lending", process.env.NEXT_PUBLIC_BURROW || "contract.main.burrow.near");
+  const wrap = () => node("wrap", "wrap", process.env.NEXT_PUBLIC_WRAP || "wrap.near", "NEAR ⇄ wNEAR");
   const ref = (pool?: number) => node(`ref:${pool ?? "?"}`, "ref", "Ref DEX", pool !== undefined ? `pool ${pool}` : "swap");
 
   // where each step's output sits until someone uses it
