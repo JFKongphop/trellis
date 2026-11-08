@@ -13,6 +13,10 @@ export const config = {
   get agentKeySeed() {
     return req("AGENT_KEY_SEED");
   },
+  /** OutLayer custody wallet (TEE-held key). When set, the worker holds no signing key at all: it asks the
+   *  wallet to sign each agent call, and the vault's agent is the wallet's NEAR account (AGENT_ACCOUNT_ID). */
+  outlayerApi: process.env.OUTLAYER_API ?? "https://api.outlayer.ai",
+  outlayerKey: process.env.OUTLAYER_API_KEY ?? "",
   initialVaults: (process.env.VAULTS ?? "").split(",").map((s) => s.trim()).filter(Boolean),
   port: Number(process.env.PORT ?? 8787),
   get apiToken() {
