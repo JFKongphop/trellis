@@ -12,7 +12,13 @@
     "dev": "tsx watch src/index.ts",
     "test": "tsx --test src/*.test.ts",
     "typecheck": "tsc --noEmit",
-    "provision": "tsx src/scripts/provision-key.ts"
+    "provision": "tsx src/scripts/provision-key.ts",
+    "testnet:setup": "tsx src/testnet/setup.ts",
+    "testnet:run": "tsx src/testnet/run.ts",
+    "testnet:outlayer": "tsx src/testnet/outlayer-register.ts",
+    "testnet:tee-agent": "tsx src/testnet/tee-agent.ts",
+    "testnet:rogue": "tsx src/testnet/rogue.ts",
+    "testnet:verify-tee": "tsx src/testnet/verify-tee.ts"
   },
   "dependencies": {
     "@noble/curves": "2.2.0",
