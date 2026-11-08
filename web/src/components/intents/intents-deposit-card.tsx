@@ -75,7 +75,9 @@ export function IntentsDepositCard({
           <Tag tone="violet">NEAR Intents</Tag>
         </div>
         <p className="text-body-sm text-muted-ash">
-          Off in demo mode: NEAR Intents moves real money on mainnet, and this demo&apos;s accounts only exist in the local sandbox.
+          {process.env.NEXT_PUBLIC_NEAR_NETWORK === "testnet"
+            ? "Off on testnet: NEAR Intents only runs on mainnet, with real money."
+            : "Off in demo mode: NEAR Intents moves real money on mainnet, and this demo's accounts only exist in the local sandbox."}{" "}
           On mainnet this card quotes BTC, ETH, SOL, USDC or USDT from Bitcoin, Ethereum, Base, Arbitrum or Solana and delivers to your vault.
         </p>
       </div>
