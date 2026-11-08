@@ -1,7 +1,7 @@
 import "server-only";
 
 // Replay demo (`pnpm demo`): no sandbox, no worker. The numbers are from a recorded run of the live
-// demo (`pnpm demo:live`, Oct 23 2026): the worker protected a ~1.25x wNEAR position after NEAR fell
+// demo (`pnpm demo:live`, Oct 23 2026, or the testnet run below): the worker protected a ~1.25x wNEAR position after NEAR fell
 // to $1.75. "Crash" replays the agent's three moves a few seconds apart; nothing is signed.
 // State lives on globalThis so every route handler sees the same replay.
 import { TOKENS, WRAP_NEAR } from "@/lib/near/config";
@@ -15,13 +15,49 @@ import { createUIMessageStream, createUIMessageStreamResponse, type UIMessage } 
 
 export const replayEnabled = () => process.env.DEMO_MODE === "replay";
 
-export const REPLAY = {
-  owner: "alice.test.near",
-  vault: "v0b53e6c36ede12dc.trellis.test.near",
-  factory: "trellis.test.near",
-  agent: "agent.test.near",
-  ownerNear: 291.9795,
-};
+// Two recordings. Default: the local sandbox run (Oct 23 2026), with placeholder tx hashes.
+// NEXT_PUBLIC_NEAR_NETWORK=testnet: the NEAR testnet run (Nov 7 2026, trellis/testnet/deployment.json) at 1/10 the
+// amounts, with the agent's key in OutLayer's TEE; every receipt links to its real testnet transaction.
+const TESTNET = process.env.NEXT_PUBLIC_NEAR_NETWORK === "testnet";
+
+export const REPLAY = TESTNET
+  ? {
+      owner: "alice-trellis-mw6tffvj.testnet",
+      vault: "v866c8a018d8854a3.app.trellis-mw6t5fzt.testnet",
+      factory: "app.trellis-mw6t5fzt.testnet",
+      agent: "a48ed23b485f0d5899757f37ac41c8c1ad25e9477e5aab7ed185bd341998d7cc",
+      ownerNear: 2.4031,
+    }
+  : {
+      owner: "alice.test.near",
+      vault: "v0b53e6c36ede12dc.trellis.test.near",
+      factory: "trellis.test.near",
+      agent: "agent.test.near",
+      ownerNear: 291.9795,
+    };
+
+/** The recorded numbers (wNEAR / USDC amounts) and, on testnet, the real transaction of each move. */
+const RUN = TESTNET
+  ? {
+      supply1: 2, borrow: 3, swapOut: 0.591128, supply2: 1, idleWnear: 0.091128, vaultNear: 1.8008,
+      withdraw: 0.281203, swapUsdc: 1.4275, capW: 5, capU: 30, perW: 2, perU: 10, ownerWnear: 0.1, ownerUsdc: 10, k: 0.1,
+      tx: {
+        "1": "BaAySERdMVtbz8AJBTGhDGV3hPSyL3rzLbBAoWM1Naib",
+        "2": "GKEzYxa1g3AcZjeVXc6UfL4pZS14P5YzgPmTNgRPSM5M",
+        "3": "HHZnmFzoG7Co6tC8AVcgdubaSkZk58jmXthw5CWBuHJx",
+        "4": "DGA1arWSFGxyhJEGsSg6WoaSXeAia9B78m1ow1TN6pBj",
+        "5": "Gah22jsXE3K7oxgmeph3rZrxAJQMVD9VwF15L85K9ewk",
+        "6": "8BQuAqdHE4MrRhSE2BYD12MnwACDwYhpwfMZqCxMLxkE",
+        "7": "GmuKA6SFbQDfQvBFAW35tvwbcbs48FCp4ecpXoBYLH38",
+      } as Record<string, string>,
+    }
+  : {
+      supply1: 20, borrow: 30, swapOut: 5.9496, supply2: 10, idleWnear: 0.949645, vaultNear: 3.8352,
+      withdraw: 2.812, swapUsdc: 14.1349, capW: 50, capU: 300, perW: 20, perU: 100, ownerWnear: 175, ownerUsdc: 100, k: 1,
+      tx: {} as Record<string, string>,
+    };
+const COLL0 = RUN.supply1 + RUN.supply2;
+const DEBT0 = RUN.borrow;
 
 const USDC = TOKENS.USDC;
 const E24 = BigInt(10) ** BigInt(24);
@@ -68,7 +104,7 @@ function receipt(r: Partial<VaultReceipt> & Pick<VaultReceipt, "op_id" | "kind" 
     health_factor_bps: null,
     note: "",
     reason_hash: `replay-${r.op_id}`,
-    tx_hash: `REPLAY${r.op_id}${"x".repeat(38)}`,
+    tx_hash: RUN.tx[r.op_id] ?? `REPLAY${r.op_id}${"x".repeat(38)}`,
     ...r,
   };
 }
@@ -90,48 +126,48 @@ function world(now = Date.now()): World {
   const p = phase();
   const setup = p.bootAt - 2 * 60_000;
   const receipts: VaultReceipt[] = [
-    receipt({ op_id: "4", kind: "Supply", timestamp: ns(setup + 30_000), token_in: WRAP_NEAR, amount_in: raw(10, 24), amount_out: raw(10, 24), origin: "plan" }),
-    receipt({ op_id: "3", kind: "SwapRef", timestamp: ns(setup + 20_000), token_in: USDC, amount_in: raw(30, 6), token_out: WRAP_NEAR, amount_out: raw(5.9496, 24), origin: "plan" }),
-    receipt({ op_id: "2", kind: "Borrow", timestamp: ns(setup + 10_000), token_out: USDC, amount_out: raw(30, 6), health_factor_bps: "23700", origin: "plan" }),
-    receipt({ op_id: "1", kind: "Supply", timestamp: ns(setup), token_in: WRAP_NEAR, amount_in: raw(20, 24), amount_out: raw(20, 24), origin: "plan" }),
+    receipt({ op_id: "4", kind: "Supply", timestamp: ns(setup + 30_000), token_in: WRAP_NEAR, amount_in: raw(RUN.supply2, 24), amount_out: raw(RUN.supply2, 24), origin: "plan" }),
+    receipt({ op_id: "3", kind: "SwapRef", timestamp: ns(setup + 20_000), token_in: USDC, amount_in: raw(RUN.borrow, 6), token_out: WRAP_NEAR, amount_out: raw(RUN.swapOut, 24), origin: "plan" }),
+    receipt({ op_id: "2", kind: "Borrow", timestamp: ns(setup + 10_000), token_out: USDC, amount_out: raw(RUN.borrow, 6), health_factor_bps: "23700", origin: "plan" }),
+    receipt({ op_id: "1", kind: "Supply", timestamp: ns(setup), token_in: WRAP_NEAR, amount_in: raw(RUN.supply1, 24), amount_out: raw(RUN.supply1, 24), origin: "plan" }),
   ];
-  const w: World = { price: p.price, coll: 30, debt: 30, vaultWnear: 0.949645, vaultUsdc: 0, wnearUsed: 30, receipts, pending: null, lastHf: 2.37 };
+  const w: World = { price: p.price, coll: COLL0, debt: DEBT0, vaultWnear: RUN.idleWnear, vaultUsdc: 0, wnearUsed: COLL0, receipts, pending: null, lastHf: 2.37 };
   if (p.crashAt === null) return w;
 
   const t = p.frozenMs ?? now - p.crashAt;
-  const hfBefore = hfOf(30, 30, CRASH_PRICE)!; // 1.247
+  const hfBefore = hfOf(COLL0, DEBT0, CRASH_PRICE)!; // 1.247
   if (t >= STEP_MS) {
-    w.coll = 27.188;
-    w.vaultWnear += 2.812;
+    w.coll = COLL0 - RUN.withdraw;
+    w.vaultWnear += RUN.withdraw;
     w.lastHf = 1.13;
-    w.pending = { collateral_token: WRAP_NEAR, collateral_left: raw(2.812, 24), debt_token: null, repay_due: "0", started_at: ns(p.crashAt + STEP_MS) };
+    w.pending = { collateral_token: WRAP_NEAR, collateral_left: raw(RUN.withdraw, 24), debt_token: null, repay_due: "0", started_at: ns(p.crashAt + STEP_MS) };
     w.receipts.unshift(
       receipt({
-        op_id: "5", kind: "WithdrawCollateral", timestamp: ns(p.crashAt + STEP_MS), token_out: WRAP_NEAR, amount_out: raw(2.812, 24),
+        op_id: "5", kind: "WithdrawCollateral", timestamp: ns(p.crashAt + STEP_MS), token_out: WRAP_NEAR, amount_out: raw(RUN.withdraw, 24),
         health_factor_bps: "11300", origin: "auto", why: "HF 1.247 < min 1.500; target HF after withdraw 1.130", hf_before_bps: bps(hfBefore),
       }),
     );
   }
   if (t >= 2 * STEP_MS) {
-    w.vaultWnear -= 2.812;
-    w.vaultUsdc = 14.1349;
-    w.wnearUsed = 32.812;
-    w.pending = { collateral_token: WRAP_NEAR, collateral_left: "0", debt_token: USDC, repay_due: raw(14.1349, 6), started_at: w.pending!.started_at };
+    w.vaultWnear -= RUN.withdraw;
+    w.vaultUsdc = RUN.swapUsdc;
+    w.wnearUsed = COLL0 + RUN.withdraw;
+    w.pending = { collateral_token: WRAP_NEAR, collateral_left: "0", debt_token: USDC, repay_due: raw(RUN.swapUsdc, 6), started_at: w.pending!.started_at };
     w.receipts.unshift(
       receipt({
-        op_id: "6", kind: "SwapRef", timestamp: ns(p.crashAt + 2 * STEP_MS), token_in: WRAP_NEAR, amount_in: raw(2.812, 24), token_out: USDC,
-        amount_out: raw(14.1349, 6), origin: "auto", why: "deleverage: convert withdrawn collateral to the debt token", hf_before_bps: "11300",
+        op_id: "6", kind: "SwapRef", timestamp: ns(p.crashAt + 2 * STEP_MS), token_in: WRAP_NEAR, amount_in: raw(RUN.withdraw, 24), token_out: USDC,
+        amount_out: raw(RUN.swapUsdc, 6), origin: "auto", why: "deleverage: convert withdrawn collateral to the debt token", hf_before_bps: "11300",
       }),
     );
   }
   if (t >= 3 * STEP_MS) {
     w.vaultUsdc = 0;
-    w.debt = 15.8651;
+    w.debt = DEBT0 - RUN.swapUsdc;
     w.pending = null;
     w.lastHf = hfOf(w.coll, w.debt, CRASH_PRICE);
     w.receipts.unshift(
       receipt({
-        op_id: "7", kind: "Repay", timestamp: ns(p.crashAt + 3 * STEP_MS), token_in: USDC, amount_in: raw(14.1349, 6), amount_out: raw(14.1349, 6),
+        op_id: "7", kind: "Repay", timestamp: ns(p.crashAt + 3 * STEP_MS), token_in: USDC, amount_in: raw(RUN.swapUsdc, 6), amount_out: raw(RUN.swapUsdc, 6),
         origin: "auto", why: "deleverage: repay debt", hf_before_bps: "11300",
       }),
     );
@@ -144,7 +180,7 @@ function tokenRow(tokenId: string, symbol: string, decimals: number, balance: nu
 }
 
 function vaultBalances(w: World): AccountBalances {
-  const rows = [tokenRow("near", "NEAR", 24, 3.8352, w.price), tokenRow(WRAP_NEAR, "wNEAR", 24, w.vaultWnear, w.price)];
+  const rows = [tokenRow("near", "NEAR", 24, RUN.vaultNear, w.price), tokenRow(WRAP_NEAR, "wNEAR", 24, w.vaultWnear, w.price)];
   if (w.vaultUsdc > 0) rows.push(tokenRow(USDC, "USDC", 6, w.vaultUsdc, 1));
   return { accountId: REPLAY.vault, exists: true, balances: rows, totalUsd: rows.reduce((s, r) => s + (r.valueUsd ?? 0), 0) };
 }
@@ -152,7 +188,7 @@ function vaultBalances(w: World): AccountBalances {
 export function replayBalances(account: string): AccountBalances {
   const w = world();
   if (account === REPLAY.vault) return vaultBalances(w);
-  const rows = [tokenRow("near", "NEAR", 24, REPLAY.ownerNear, w.price), tokenRow(WRAP_NEAR, "wNEAR", 24, 175, w.price), tokenRow(USDC, "USDC", 6, 100, 1)];
+  const rows = [tokenRow("near", "NEAR", 24, REPLAY.ownerNear, w.price), tokenRow(WRAP_NEAR, "wNEAR", 24, RUN.ownerWnear, w.price), tokenRow(USDC, "USDC", 6, RUN.ownerUsdc, 1)];
   return { accountId: account, exists: account === REPLAY.owner, balances: account === REPLAY.owner ? rows : [], totalUsd: account === REPLAY.owner ? rows.reduce((s, r) => s + (r.valueUsd ?? 0), 0) : 0 };
 }
 
@@ -187,8 +223,8 @@ export function replayPosition(account: string): LendingPosition {
 const POLICY: VaultPolicy = {
   allowed_tokens: [WRAP_NEAR, USDC],
   allowed_ref_pools: [0],
-  per_action_cap: [[WRAP_NEAR, (BigInt(20) * E24).toString()], [USDC, "100000000"]],
-  daily_cap: [[WRAP_NEAR, (BigInt(50) * E24).toString()], [USDC, "300000000"]],
+  per_action_cap: [[WRAP_NEAR, (BigInt(RUN.perW) * E24).toString()], [USDC, raw(RUN.perU, 6)]],
+  daily_cap: [[WRAP_NEAR, (BigInt(RUN.capW) * E24).toString()], [USDC, raw(RUN.capU, 6)]],
   max_slippage_bps: 200,
   max_intents_spread_bps: 50,
   min_health_factor_bps: 15000,
@@ -217,7 +253,7 @@ export function replayVaultState(vaultId: string) {
     agent_expires_at: null,
     paused: false,
     in_flight: null,
-    near_available: raw(3.8352, 24),
+    near_available: raw(RUN.vaultNear, 24),
     storage_spent: "0",
     last_health: w.lastHf ? { health_factor_bps: bps(w.lastHf)!, collateral_usd_e18: "0", debt_usd_e18: "0", timestamp: ns(Date.now()) } : null,
     day: String(Math.floor(Date.now() / 86_400_000)),
@@ -229,7 +265,7 @@ export function replayVaultState(vaultId: string) {
     policy: POLICY,
     tokens: TOKENS_INFO,
     receipts: w.receipts,
-    remaining: { [WRAP_NEAR]: raw(50 - w.wnearUsed, 24), [USDC]: raw(270, 6) },
+    remaining: { [WRAP_NEAR]: raw(RUN.capW - w.wnearUsed, 24), [USDC]: raw(RUN.capU - RUN.borrow, 6) },
     balances: vaultBalances(w),
     position: replayPosition(vaultId),
     protocolsReady: true,
@@ -276,31 +312,33 @@ export function replayInfo(): DemoInfo {
 
 /** 1.25x → ~1.8x: borrow 66 USDC, swap to wNEAR on Ref, supply it. HF 3.56 → 1.60 (min 1.50). */
 export function replayVaultPlan(): { plan: VaultPlan; approval: { token: string; planId: string; expiresAt: number } } {
+  const k = RUN.k; // testnet: 1/10 of the sandbox amounts
+  const n = (x: number) => +(x * k).toFixed(4);
   const plan: VaultPlan = {
     mode: "vault",
     vaultId: REPLAY.vault,
     owner: REPLAY.owner,
     steps: [
-      { id: "borrow", kind: "borrow", label: "Borrow 66 USDC into the vault (then sync)", tokenOut: "USDC", amountOut: 66, refs: [0] },
+      { id: "borrow", kind: "borrow", label: `Borrow ${n(66)} USDC into the vault (then sync)`, tokenOut: "USDC", amountOut: n(66), refs: [0] },
       {
-        id: "swap", kind: "swap", label: "Swap 66 USDC for about 13.14 wNEAR (at least 12.88) on Ref pool 0",
-        tokenIn: "USDC", amountIn: 66, tokenOut: "wNEAR", amountOut: 13.14, minOut: 12.88, refs: [1], pool: 0, fromStep: "borrow",
+        id: "swap", kind: "swap", label: `Swap ${n(66)} USDC for about ${n(13.14)} wNEAR (at least ${n(12.88)}) on Ref pool 0`,
+        tokenIn: "USDC", amountIn: n(66), tokenOut: "wNEAR", amountOut: n(13.14), minOut: n(12.88), refs: [1], pool: 0, fromStep: "borrow",
       },
-      { id: "supply", kind: "supply", label: "Supply 12.88 wNEAR to Rhea Lending as collateral", tokenIn: "wNEAR", amountIn: 12.88, refs: [2], fromStep: "swap" },
+      { id: "supply", kind: "supply", label: `Supply ${n(12.88)} wNEAR to Rhea Lending as collateral`, tokenIn: "wNEAR", amountIn: n(12.88), refs: [2], fromStep: "swap" },
     ],
     calls: [
-      { method: "agent_borrow", args: { token: TOKENS.USDC, amount: "66000000" }, label: "Borrow 66 USDC" },
-      { method: "agent_swap_ref", args: { pool_id: 0, token_in: TOKENS.USDC, token_out: WRAP_NEAR, amount_in: "66000000" }, label: "Swap 66 USDC → wNEAR (pool 0)" },
-      { method: "agent_supply", args: { token: WRAP_NEAR, amount: "12880000000000000000000000" }, label: "Supply 12.88 wNEAR" },
+      { method: "agent_borrow", args: { token: TOKENS.USDC, amount: raw(n(66), 6) }, label: `Borrow ${n(66)} USDC` },
+      { method: "agent_swap_ref", args: { pool_id: 0, token_in: TOKENS.USDC, token_out: WRAP_NEAR, amount_in: raw(n(66), 6) }, label: `Swap ${n(66)} USDC → wNEAR (pool 0)` },
+      { method: "agent_supply", args: { token: WRAP_NEAR, amount: raw(n(12.88), 24) }, label: `Supply ${n(12.88)} wNEAR` },
     ],
     guardian: [
       { id: "hf", source: "check", level: "pass", title: "Health factor after: 1.60", note: "Above your 1.50 minimum. The vault re-checks it with oracle prices before the borrow." },
-      { id: "caps", source: "check", level: "pass", title: "Within today's limits", note: "66 of 270 USDC left today; 12.88 of 20 wNEAR left today." },
+      { id: "caps", source: "check", level: "pass", title: "Within today's limits", note: `${n(66)} of ${n(270)} USDC left today; ${n(12.88)} of ${n(20)} wNEAR left today.` },
       { id: "impact", source: "check", level: "pass", title: "Price vs oracle: 0.42%", note: "Inside your 2% max slippage. The vault sets the minimum output from the oracle itself." },
       { id: "rate", source: "agent", level: "flag", title: "Borrow cost is variable", note: "USDC borrow APR moves with utilization; interest slowly lowers the health factor." },
     ],
     blocked: false,
-    summary: "Loop the vault from ~1.25x to ~1.8x: borrow 66 USDC, swap it to wNEAR on Ref, supply it as collateral.",
+    summary: `Loop the vault from ~1.25x to ~1.8x: borrow ${n(66)} USDC, swap it to wNEAR on Ref, supply it as collateral.`,
     healthBefore: 3.56,
     healthAfter: 1.6,
     createdAt: Date.now(),
@@ -341,7 +379,7 @@ export function replayChatResponse(messages: UIMessage[]): Response {
           input: {
             reasoning: "Loop to ~1.8x: borrow USDC, swap to wNEAR on Ref, supply as collateral; HF stays above 1.5.",
             steps: [
-              { id: "borrow", kind: "borrow", token: "USDC", amount: 66 },
+              { id: "borrow", kind: "borrow", token: "USDC", amount: +(66 * RUN.k).toFixed(4) },
               { id: "swap", kind: "swap", tokenIn: "USDC", tokenOut: "wNEAR", origin: { from: "step", stepId: "borrow" } },
               { id: "supply", kind: "supply", token: "wNEAR", origin: { from: "step", stepId: "swap" } },
             ],
