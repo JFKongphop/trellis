@@ -26,15 +26,18 @@ export type CallResult = {
   value: unknown;
 };
 
-/** Agent call to a vault with that vault's function-call key. No deposit (FC keys can't attach any). */
+/** Agent call to a vault: signed inside OutLayer's TEE when OUTLAYER_API_KEY is set, otherwise with that vault's
+ *  function-call key. No deposit (agent methods are non-payable). */
 export async function agentCall(vaultId: string, method: string, args: Record<string, unknown>): Promise<CallResult> {
-  const outcome = await agent.signAndSendTransaction({
-    receiverId: vaultId,
-    actions: [actions.functionCall(method, args, teraToGas(String(config.agentGasTgas) as `${number}`), 0n)],
-    signer: signerFor(config.agentKeySeed, vaultId),
-    waitUntil: "EXECUTED_OPTIMISTIC",
-    throwOnFailure: true,
-  });
+  const outcome = config.outlayerKey
+    ? await outlayerCall(vaultId, method, args)
+    : await agent.signAndSendTransaction({
+        receiverId: vaultId,
+        actions: [actions.functionCall(method, args, teraToGas(String(config.agentGasTgas) as `${number}`), 0n)],
+        signer: signerFor(config.agentKeySeed, vaultId),
+        waitUntil: "EXECUTED_OPTIMISTIC",
+        throwOnFailure: true,
+      });
   const events: NepEvent[] = [];
   let failedReceipts = 0;
   for (const r of outcome.receipts_outcome) {
@@ -58,6 +61,30 @@ export async function agentCall(vaultId: string, method: string, args: Record<st
     /* empty result */
   }
   return { txHash: outcome.transaction_outcome.id, events, failedReceipts, value };
+}
+
+/** Signs and sends through the OutLayer custody wallet, then reads the full outcome from the chain. */
+async function outlayerCall(vaultId: string, method: string, args: Record<string, unknown>) {
+  let tx: string | null = null;
+  for (let attempt = 0; !tx; attempt++) {
+    const r = await fetch(`${config.outlayerApi}/wallet/v1/call`, {
+      method: "POST",
+      headers: { authorization: `Bearer ${config.outlayerKey}`, "content-type": "application/json" },
+      body: JSON.stringify({ receiver_id: vaultId, method_name: method, args, gas: String(BigInt(config.agentGasTgas) * 10n ** 12n), deposit: "0" }),
+      signal: AbortSignal.timeout(90_000),
+    });
+    const body = (await r.json().catch(() => ({}))) as { tx_hash?: string | null; status?: string; error?: string; message?: string };
+    if (r.status === 409 || r.status === 429 || r.status === 503) {
+      if (attempt >= 5) throw new Error(`outlayer ${r.status}: ${body.error ?? body.message ?? "busy"}`);
+      await new Promise((s) => setTimeout(s, 2000 * 2 ** attempt));
+      continue;
+    }
+    // 422: signed and sent, but the transaction failed on-chain; its outcome still carries the vault's events
+    if (!r.ok && r.status !== 422) throw new Error(`outlayer ${r.status}: ${body.error ?? body.message ?? JSON.stringify(body).slice(0, 200)}`);
+    if (!body.tx_hash) throw new Error(`outlayer: no transaction (status ${body.status ?? r.status})`);
+    tx = body.tx_hash;
+  }
+  return readProvider.viewTransactionStatusWithReceipts({ txHash: tx, accountId: config.agentId, waitUntil: "EXECUTED_OPTIMISTIC" });
 }
 
 /** Outcome of one agent action, judged from the vault's own events (the vault settles inside callbacks). */
