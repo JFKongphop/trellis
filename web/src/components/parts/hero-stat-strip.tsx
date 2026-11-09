@@ -33,22 +33,28 @@ export function HeroStatStrip() {
     ? markets.reduce((s, m) => s + (m.totalSuppliedUsd ?? 0), 0)
     : null;
 
+  // A near-empty market (testnet) has ~0% rates: "0.0%" reads as broken, so those two are left out.
+  const ratesShown = !usdc || usdc.borrowAprPct >= 0.05;
   const items: Item[] = [
     {
       value: near?.priceUsd != null ? fmtPriceUsd(near.priceUsd) : null,
       label: "NEAR",
       live: true,
     },
-    {
-      value: usdc ? `${usdc.supplyAprPct.toFixed(1)}%` : null,
-      label: "USDC supply APR",
-      Icon: TrendingUp,
-    },
-    {
-      value: usdc ? `${usdc.borrowAprPct.toFixed(1)}%` : null,
-      label: "USDC borrow APR",
-      Icon: TrendingUp,
-    },
+    ...(ratesShown
+      ? [
+          {
+            value: usdc ? `${usdc.supplyAprPct.toFixed(1)}%` : null,
+            label: "USDC supply APR",
+            Icon: TrendingUp,
+          },
+          {
+            value: usdc ? `${usdc.borrowAprPct.toFixed(1)}%` : null,
+            label: "USDC borrow APR",
+            Icon: TrendingUp,
+          },
+        ]
+      : []),
     {
       value: tvl != null ? fmtUsdShort(tvl) : null,
       label: "on Rhea Lending",
