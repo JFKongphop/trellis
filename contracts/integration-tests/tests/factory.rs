@@ -138,3 +138,27 @@ async fn factory_refunds_failed_creation() -> anyhow::Result<()> {
     assert!(r.is_success(), "retry accepted: {:?}", r.failures());
     Ok(())
 }
+
+/// A testnet-style factory: every vault it creates is bound to the factory's own protocol contracts.
+#[tokio::test]
+async fn factory_passes_its_protocols_to_vaults() -> anyhow::Result<()> {
+    let worker = near_workspaces::sandbox().await?;
+    let root = worker.root_account()?;
+    let admin = root.create_subaccount("admin").initial_balance(NearToken::from_near(20)).transact().await?.into_result()?;
+    let alice = root.create_subaccount("alice").initial_balance(NearToken::from_near(50)).transact().await?.into_result()?;
+    let factory_acc = root.create_subaccount("trellis").initial_balance(NearToken::from_near(30)).transact().await?.into_result()?;
+    let factory = factory_acc.deploy(&std::fs::read(FACTORY_WASM)?).await?.into_result()?;
+    let protocols = json!({ "burrow": "burrow.trellis.test.near", "ref_exchange": "ref.trellis.test.near",
+        "oracle": "oracle.trellis.test.near", "intents": "intents.near", "wrap": "wrap.test.near" });
+    factory.call("new").args_json(json!({ "admin": admin.id(), "mode": "Local", "protocols": protocols })).transact().await?.into_result()?;
+    admin.call(factory.id(), "set_code").args(std::fs::read(VAULT_WASM)?).gas(Gas::from_tgas(300)).transact().await?.into_result()?;
+
+    let r = alice.call(factory.id(), "create_vault").deposit(NearToken::from_near(6)).gas(Gas::from_tgas(300)).transact().await?;
+    assert!(r.receipt_failures().is_empty());
+    let vault: near_workspaces::AccountId = r.json::<Option<String>>()?.expect("vault id").parse()?;
+    let got: serde_json::Value = worker.view(&vault, "get_protocols").await?.json()?;
+    assert_eq!(got, protocols, "the vault is bound to the factory's protocols");
+    let f: serde_json::Value = factory.view("get_protocols").await?.json()?;
+    assert_eq!(f, protocols);
+    Ok(())
+}
