@@ -36,12 +36,12 @@ const STORY = [
   { id: 'plan', kind: 'shot', from: '@plan', to: '@guardian',
     vo: ['Trellis reads live Rhea Lending markets and oracle prices, then builds the plan. Borrow USDC, swap it on Ref, supply the NEAR back.',
       'Here is the money flow. Where every token goes. Health factor three point five six, down to one point six. Still above your line.'] },
-  { id: 'guardian', kind: 'shot', from: '@guardian', to: '@rules',
+  { id: 'guardian', kind: 'shot', from: '@guardian', to: '@rules', toOff: -0.65,
     vo: ['Then the guardian reads it back. Fixed checks that never miss the basics, and an agent that reads the plan itself. One click to approve.'] },
   { id: 'fence', kind: 'card', lines: ['the agent can only do', 'what your *vault* allows.'], sub: 'rules enforced on-chain, not by a prompt',
     cues: ['the agent can', 'what your vault'], subCue: 'checked on chain',
     vo: ['The agent can only do what your vault allows. It never holds your keys. Every move is checked on chain, not by a prompt.'] },
-  { id: 'rules', kind: 'shot', from: '@rules', to: '@vault',
+  { id: 'rules', kind: 'shot', from: '@rules', to: '@vault', toOff: -0.55,
     vo: ["Pick the tokens and pools it may touch. Cap every action, and every day. Set the lowest health factor you'll ever accept."] },
   { id: 'vault', kind: 'shot', from: '@vault', to: '@crash',
     vo: ['Your vault holds a leveraged position on Rhea Lending. The Trellis agent watches it, day and night.'] },
@@ -53,13 +53,28 @@ const STORY = [
   { id: 'protect', kind: 'shot', from: '@protect', to: '@money',
     vo: ['The agent acts on its own. Withdraw collateral, swap on Ref, repay the debt. Three moves. No signature from you.'] },
   { id: 'money', kind: 'shot', tone: 'heal', from: '@money', to: '@activity',
-    vo: ['Every step stays inside your rules. Health factor back to two point one four, while you slept.'] },
+    vo: ['Every step stays inside your rules. Health factor back to two point one six, while you slept.'] },
   { id: 'activity', kind: 'shot', from: '@activity', to: '@feed',
     vo: ["And every move lands on chain, tagged automatic, with the agent's reason."] },
-  { id: 'feed', kind: 'shot', from: '@feed', to: '@portfolio',
+  { id: 'feed', kind: 'shot', from: '@feed', fromOff: 2.0, to: '@portfolio',
     vo: ['The feed shows every agent move, across every vault. Live.'] },
-  { id: 'portfolio', kind: 'shot', from: '@portfolio', to: '@end',
-    vo: ['Your wallet, your vault, your health factor. All in one place.'] },
+  // ── on NEAR testnet: the TEE agent, then the agent gone rogue (screenshots of testnet.nearblocks.io in demo-video/proof/)
+  { id: 'tee', kind: 'card', lines: ['the agent’s key lives', 'inside a *TEE*.'], sub: 'generated in Intel TDX by OutLayer · no server, no person ever holds it',
+    cues: ['the agents key', 'inside a tee'], subCue: 'its generated',
+    vo: ["And the agent's key lives inside a TEE. It's generated in a secure Intel enclave, run by OutLayer. No server, and no person, ever holds it."] },
+  { id: 'teeproof', kind: 'proof', img: 'tee-repay.png', url: 'testnet.nearblocks.io/txns/GmuKA6SFbQDfQvBFAW35tvwbcbs48FCp4ecpXoBYLH38',
+    eyebrow: 'NEAR TESTNET · PUBLIC EXPLORER', title: 'the repay, signed by the *TEE*',
+    rings: [{ box: [66, 131, 514, 40], cue: 'this is the' }, { box: [256, 290, 92, 38], cue: 'it went through' }],
+    vo: ["This is the agent's repay on NEAR testnet. Signed by the enclave's own account, on your vault. And it went through."] },
+  { id: 'rogue', kind: 'card', tone: 'crash', lines: ['what if the agent', 'goes *rogue*?'], sub: 'we tried it on testnet, signed as the real agent',
+    cues: ['what if the', 'goes rogue'], subCue: 'we tried it',
+    vo: ['But what if the agent goes rogue? We tried it on testnet, signed as the real agent.'] },
+  { id: 'refused', kind: 'proof', tone: 'crash', img: 'refused.png', url: 'testnet.nearblocks.io/txns/4oEXGqsB1vYo4U2Dyk6AT5Py79mECCPsL38Nu1TjJ6za',
+    eyebrow: 'NEAR TESTNET · 4 ATTEMPTS, 4 REFUSALS', title: 'your vault says *no*.',
+    rings: [{ box: [66, 131, 514, 40], cue: 'rewrite its own' }, { box: [256, 290, 336, 38], cue: 'refused every' }],
+    chips: [{ t: 'rewrite its own rules → ERR_NOT_OWNER', cue: 'rewrite its own' }, { t: 'unapproved pool → ERR_POOL_NOT_ALLOWED', cue: 'a pool you' },
+      { t: 'over the cap → ERR_PER_ACTION_CAP', cue: 'break your cap' }, { t: 'below your floor → min_health_factor', cue: 'borrow below' }],
+    vo: ['It tried to rewrite its own rules. Swap through a pool you never allowed. Break your cap. Borrow below your floor. Your vault refused every one, on chain.'] },
   { id: 'intents', kind: 'card', lines: ['fund it from *any chain*.'], sub: 'BTC · ETH · SOL · USDC → your vault, through NEAR Intents',
     cues: ['fund it from'], subCue: 'bitcoin',
     vo: ['And you can fund it from any chain. Bitcoin, Ether, Solana or USDC, delivered straight to your vault through NEAR Intents.'] },
@@ -154,11 +169,13 @@ const scenes = STORY.map((s) => {
   const voLen = voice.reduce((a, l) => a + l.d, 0) + GAP * (voice.length - 1);
   let d = LEAD + voLen + TAIL;
   if (s.kind === 'shot') {
-    const a = markT(s.from), b = markT(s.to);
+    // fromOff / toOff (seconds of the take) cut a page load at a shot's edge, so no blank loading frame shows
+    const a = markT(s.from) + (s.fromOff ?? 0), b = markT(s.to) + (s.toOff ?? 0);
     d = Math.max(d, (b - a) / MAX_SPEED);
     s.a = a; s.b = b;
   }
   if (s.kind === 'outro') d = Math.max(d, 6);
+  if (s.kind === 'proof') fs.copyFileSync(`${ROOT}/demo-video/proof/${s.img}`, `${PROJECT}/assets/proof-${s.img}`);
   const sc = { ...s, start: r2(t), d: r2(d), voice };
   let lt = t + LEAD;
   sc.lineAt = voice.map((l) => { const at = r2(lt); lt += l.d + GAP; return at; });
@@ -181,14 +198,19 @@ const TOTAL = r2(t);
 const [SW, SH] = sh('ffprobe', ['-v', 'error', '-select_streams', 'v:0', '-show_entries', 'stream=width,height', '-of', 'csv=p=0', `${TAKE}/edited.mp4`]).trim().split(',').map(Number);
 const PX = SW / FOOT_W; // source pixels per CSS pixel of the recorded page
 const ZD = 1.1; // seconds per zoom move
-for (const s of scenes.filter((x) => x.kind === 'shot')) {
+for (const [idx, s] of scenes.entries()) {
+  if (s.kind !== 'shot') continue;
+  // a shot right after another shot continues from where that one's camera ended (no jump back to full frame)
+  const prev = scenes[idx - 1];
+  s.afterShot = prev?.kind === 'shot';
   const len = s.b - s.a;
   const k = Math.max(len / s.d, MIN_SPEED); // playback speed
   s.k = k;
   const out = `${PROJECT}/assets/shot-${s.id}.mp4`;
   const pad = Math.max(0, s.d - len / k) + 0.2;
   // crop rects in source pixels: { at, d, w, x, y }
-  const rects = [{ w: SW, x: 0, y: 0 }];
+  const rects = [s.afterShot && prev.endRect ? prev.endRect : { w: SW, x: 0, y: 0 }];
+  s.startRect = rects[0];
   const moves = [];
   s.zooms = zooms.filter((z) => z.t >= s.a && z.t < s.b).map((z) => {
     const bw = z.w * PX, bh = z.h * PX, cx = (z.x + z.w / 2) * PX, cy = (z.y + z.h / 2) * PX;
@@ -202,6 +224,7 @@ for (const s of scenes.filter((x) => x.kind === 'shot')) {
     const w = SW / 1.04;
     moves.push({ at: 0, d: s.d, from: rects[0], to: { w, x: (SW - w) * 0.7, y: (SH - SH / 1.04) * 0.35 } });
   }
+  s.endRect = moves.length ? moves.at(-1).to : rects.at(-1);
   s.moves = moves; // zoom is done in the page with a GSAP transform: sub-pixel smooth (per-frame ffmpeg crops snap to whole pixels and shake)
   execFileSync('ffmpeg', ['-v', 'error', '-y', '-ss', s.a.toFixed(3), '-t', len.toFixed(3), '-i', `${TAKE}/edited.mp4`,
     '-vf', `setpts=(PTS-STARTPTS)/${k.toFixed(4)},tpad=stop_mode=clone:stop_duration=${pad.toFixed(2)},fps=30,format=yuv420p`,
@@ -252,13 +275,24 @@ for (const s of scenes) {
   } else if (s.kind === 'shot') {
     // the video is timed on its own, as a direct child of the stage; its wrapper carries the zoom
     body += `<video id="v-${s.id}" class="clip shot" src="assets/shot-${s.id}.mp4" muted playsinline data-start="${st}" data-duration="${s.d}" data-media-start="0"></video>\n`;
-    tw(`#v-${s.id}`, { opacity: 0 }, { opacity: 1, duration: 0.4, ease: 'power2.out' }, st);
+    // fade in after a card; straight cut after another shot of the same app (a fade there flashes the page)
+    if (!s.afterShot) tw(`#v-${s.id}`, { opacity: 0 }, { opacity: 1, duration: 0.4, ease: 'power2.out' }, st);
     // zoom: crop rect (source px) → transform of the full-frame video (scale about the top-left corner)
     const tf = (r) => { const sc = SW / r.w; return { scale: +sc.toFixed(5), x: +(-r.x * (W / SW) * sc).toFixed(3), y: +(-r.y * (H / SH) * sc).toFixed(3) }; };
-    set(`#v-${s.id}`, { ...tf({ w: SW, x: 0, y: 0 }), transformOrigin: '0 0' }, st);
+    set(`#v-${s.id}`, { ...tf(s.startRect), transformOrigin: '0 0' }, st);
     for (const m of s.moves) to(`#v-${s.id}`, { ...tf(m.to), duration: +m.d.toFixed(3), ease: m.d > ZD ? 'none' : 'sine.inOut' }, r2(st + m.at));
+  } else if (s.kind === 'proof') {
+    // a NearBlocks screenshot (1394x586) in a browser frame; rings land on the fields the voice names
+    const IW = 1394, IH = 586, SHOW = 1180, k = SHOW / IW;
+    const ring = (b, i) => `<div class="ring" id="${s.id}-r${i}" style="left:${(b[0] * k).toFixed(1)}px;top:${(b[1] * k).toFixed(1)}px;width:${(b[2] * k).toFixed(1)}px;height:${(b[3] * k).toFixed(1)}px"></div>`;
+    body += `<section id="${s.id}" class="clip scene proof${s.tone ? ' ' + s.tone : ''}" data-start="${st}" data-duration="${s.d}"><div class="ph"><span class="eyebrow">${esc(s.eyebrow)}</span><h2>${hi(s.title)}</h2></div><div class="win"><div class="bar"><i></i><i></i><i></i><span class="u">${esc(s.url)}</span></div><div class="pic" style="width:${SHOW}px;height:${(IH * k).toFixed(1)}px"><img src="assets/proof-${s.img}" alt="" />${s.rings.map((r, i) => ring(r.box, i)).join('')}</div></div>${s.chips ? `<div class="rchips">${s.chips.map((c, i) => `<span class="rc" id="${s.id}-c${i}">${esc(c.t)}</span>`).join('')}</div>` : ''}</section>\n`;
+    tw(`#${s.id} .ph > *`, { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.55, stagger: 0.1, ease: 'power3.out' }, st + 0.1);
+    tw(`#${s.id} .win`, { opacity: 0, y: 40 }, { opacity: 1, y: 0, duration: 0.65, ease: 'power3.out' }, st + 0.25);
+    s.rings.forEach((r, i) => tw(`#${s.id}-r${i}`, { opacity: 0, scale: 1.08 }, { opacity: 1, scale: 1, duration: 0.35, ease: 'power2.out' }, r2(st + Math.max(0.9, s.cue(r.cue) - 0.1))));
+    (s.chips ?? []).forEach((c, i) => tw(`#${s.id}-c${i}`, { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.4, ease: 'power2.out' }, r2(st + Math.max(0.9, s.cue(c.cue) - 0.1))));
+    to(`#${s.id} .ph, #${s.id} .win, #${s.id} .rchips`, { opacity: 0, y: -16, duration: 0.35, ease: 'power2.in' }, r2(en - 0.38));
   } else if (s.kind === 'outro') {
-    body += `<section id="${s.id}" class="clip scene card outro" data-start="${st}" data-duration="${s.d}">${logo('o-logo')}<h1><span class="ln">set the rules. <em>sleep.</em></span></h1><div class="chips"><span class="chip">NEAR</span><span class="chip">Rhea Lending</span><span class="chip">Ref DEX</span><span class="chip">NEAR Intents</span><span class="chip g">Rust policy vault</span></div><p class="url">github.com/JFKongphop/trellis · try it: <b>pnpm demo</b></p></section>\n`;
+    body += `<section id="${s.id}" class="clip scene card outro" data-start="${st}" data-duration="${s.d}">${logo('o-logo')}<h1><span class="ln">set the rules. <em>sleep.</em></span></h1><div class="chips"><span class="chip">NEAR</span><span class="chip">Rhea Lending</span><span class="chip">Ref DEX</span><span class="chip">NEAR Intents</span><span class="chip">OutLayer TEE</span><span class="chip g">Rust policy vault</span></div><p class="url">github.com/JFKongphop/trellis · <b>live on NEAR testnet</b></p></section>\n`;
     tw('#o-logo', { opacity: 0, scale: 0.9 }, { opacity: 1, scale: 1, duration: 0.7, ease: 'back.out(1.6)' }, st + 0.1);
     js += `tl.fromTo("#o-logo .c path", {strokeDasharray:140, strokeDashoffset:140}, {strokeDashoffset:0, duration:1.6, ease:"power2.inOut", immediateRender:false}, ${r2(st + 0.2)});\n`;
     tw(`#${s.id} .ln`, { opacity: 0, y: 40, filter: 'blur(10px)' }, { opacity: 1, y: 0, filter: 'blur(0px)', duration: 0.75, ease: 'power3.out' }, r2(st + s.cue(s.cues[0]) - 0.15));
@@ -352,6 +386,19 @@ const html = `<!doctype html>
       .chip { background: #111; color: #fff; border-radius: 999px; font: 500 26px 'Labil Grotesk', sans-serif; padding: 13px 26px; }
       .chip.g { background: linear-gradient(100deg, #ee7b3d, #b04fc7); }
       .url { font: 500 32px 'Sometype Mono', monospace; color: #6d6c6b; } .url b { color: #111; }
+      .proof { gap: 26px; } .proof .ph { display: flex; flex-direction: column; align-items: center; gap: 14px; } .proof .ph > * { opacity: 0; }
+      .proof .eyebrow { font: 700 22px 'Sometype Mono', monospace; letter-spacing: .06em; color: #fff; background: #111; border-radius: 10px; padding: 8px 16px; }
+      .proof.crash .eyebrow { background: #c4553b; }
+      .proof h2 { font-weight: 500; font-size: 64px; line-height: 1.05; letter-spacing: -.03em; color: #1b1a19; }
+      .proof .win { opacity: 0; background: #fff; border-radius: 18px; overflow: hidden; box-shadow: 0 0 0 1px rgba(17,17,17,.06), 0 40px 80px -34px rgba(17,17,17,.4); }
+      .proof .bar { height: 48px; background: #eef0f3; display: flex; align-items: center; gap: 9px; padding: 0 18px; border-bottom: 1px solid #e2e5ea; }
+      .proof .bar i { width: 12px; height: 12px; border-radius: 50%; background: #d4d7dc; } .proof .bar i:nth-child(1) { background: #ff5f57; } .proof .bar i:nth-child(2) { background: #febc2e; } .proof .bar i:nth-child(3) { background: #28c840; }
+      .proof .bar .u { margin-left: 14px; flex: 1; height: 30px; border-radius: 8px; background: #fff; display: flex; align-items: center; padding: 0 12px; font: 500 16px 'Sometype Mono', monospace; color: #4b5563; white-space: nowrap; overflow: hidden; text-align: left; }
+      .proof .pic { position: relative; } .proof .pic img { display: block; width: 100%; height: 100%; }
+      .proof .ring { position: absolute; border: 4px solid #ee7b3d; border-radius: 12px; opacity: 0; }
+      .proof.crash .ring { border-color: #e5482f; }
+      .rchips { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; max-width: 1500px; }
+      .rc { opacity: 0; background: #fff; border: 2px solid #e5482f; color: #9b2f1d; border-radius: 999px; font: 600 22px 'Sometype Mono', monospace; padding: 9px 18px; }
     </style>
   </head>
   <body>
