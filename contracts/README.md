@@ -50,4 +50,6 @@ near contract call-function as-read-only trellis.near get_mode json-args '{}' ne
 near contract call-function as-read-only trellis.near get_min_deposit json-args '{}' network-config mainnet now
 ```
 
+`new` also takes optional `protocols` (`burrow`, `ref_exchange`, `oracle`, `intents`, `wrap`), fixed for every vault the factory creates. Leave it out on mainnet.
+
 Users then call `create_vault` with `get_min_deposit` attached (the web app does this).
