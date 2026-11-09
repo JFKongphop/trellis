@@ -1,0 +1,132 @@
+{
+  "network": "testnet",
+  "root": "trellis-mw6t5fzt.testnet",
+  "wrap": "wrap.testnet",
+  "usdc": "usdc.trellis-mw6t5fzt.testnet",
+  "oracle": "oracle.trellis-mw6t5fzt.testnet",
+  "ref": "ref.trellis-mw6t5fzt.testnet",
+  "burrow": "burrow.trellis-mw6t5fzt.testnet",
+  "factory": "app.trellis-mw6t5fzt.testnet",
+  "agent": "a48ed23b485f0d5899757f37ac41c8c1ad25e9477e5aab7ed185bd341998d7cc",
+  "intents": "intents.testnet (unused: Intents has no testnet)",
+  "steps": {
+    "usdc": true,
+    "oracle": true,
+    "ref": true,
+    "pool": true,
+    "burrow": true,
+    "burrow_assets": true,
+    "factory": true,
+    "agent": true,
+    "rules": true,
+    "agent_key": true,
+    "deposit": true
+  },
+  "pool_id": 0,
+  "proof": {
+    "factory": {
+      "label": "Trellis factory deployed, bound to Rhea, Ref and the oracle",
+      "tx": "2Pyev61gQEDNGNSQ2GnPfEBVJGfQduoF4osgKvV5rKex"
+    },
+    "vault_code": {
+      "label": "Vault code stored in the factory (398 KB)",
+      "tx": "7WVuoXoB7Cmv5hVbHyfq7exV7rpnrwYYY76EnkczQccr"
+    },
+    "create_vault": {
+      "label": "Vault created through the factory (5.976 NEAR deposit, no access keys)",
+      "tx": "5idQ1x7a9qMDow1jF9cXgvzow6RcpUQs2qMMeyJ1rqn4"
+    },
+    "set_policy": {
+      "label": "Owner signs the rules once (caps, min health factor 1.5, deleverage below 1.3)",
+      "tx": "EH32j1zVnhPH8r1zuhxSnXS9m13Y6sDNCySdtNQrVrQ7"
+    },
+    "set_agent": {
+      "label": "Owner authorizes the agent",
+      "tx": "Fri1t3aTMWY9esmJ4yzexNVx6cxWjN5UmWAvuxxP2Qov"
+    },
+    "deposit": {
+      "label": "Owner deposits 2.5 wNEAR into the vault",
+      "tx": "HDnR9SHeEpDqMHoCWMC2oK1Govq7KLz3V69oxQGHLxDo"
+    },
+    "position_1": {
+      "label": "Agent (owner-approved plan): Supply 2 wNEAR as collateral",
+      "tx": "BaAySERdMVtbz8AJBTGhDGV3hPSyL3rzLbBAoWM1Naib"
+    },
+    "position_2": {
+      "label": "Agent (owner-approved plan): Borrow 3 USDC",
+      "tx": "GKEzYxa1g3AcZjeVXc6UfL4pZS14P5YzgPmTNgRPSM5M"
+    },
+    "position_3": {
+      "label": "Agent (owner-approved plan): Swap 3 USDC \u2192 wNEAR",
+      "tx": "HHZnmFzoG7Co6tC8AVcgdubaSkZk58jmXthw5CWBuHJx"
+    },
+    "position_4": {
+      "label": "Agent (owner-approved plan): Supply 1 wNEAR as collateral",
+      "tx": "DGA1arWSFGxyhJEGsSg6WoaSXeAia9B78m1ow1TN6pBj"
+    },
+    "tee_fund": {
+      "label": "Gas money for the TEE agent's account (it holds no vault funds)",
+      "tx": "AYfXdTuEYwTPUwTHiGUrFJsxYwSK6KsfPBxNLt1XKBGM"
+    },
+    "set_tee_agent": {
+      "label": "Owner makes the TEE wallet the vault's only agent (key generated and held in OutLayer's TEE)",
+      "tx": "DY5xjDZy552mXCvuBH1Q3ydhQGMe2iM1uZ8k1x1iSjMm"
+    },
+    "auto_1": {
+      "label": "Agent, on its own (health factor 1.25): HF 1.247 < min 1.500; target HF after withdraw 1.130",
+      "tx": "Gah22jsXE3K7oxgmeph3rZrxAJQMVD9VwF15L85K9ewk"
+    },
+    "auto_2": {
+      "label": "Agent, on its own (health factor 1.13): deleverage: convert withdrawn collateral to the debt token",
+      "tx": "8BQuAqdHE4MrRhSE2BYD12MnwACDwYhpwfMZqCxMLxkE"
+    },
+    "auto_3": {
+      "label": "Agent, on its own (health factor 1.13): deleverage: repay debt",
+      "tx": "GmuKA6SFbQDfQvBFAW35tvwbcbs48FCp4ecpXoBYLH38"
+    },
+    "rogue_owner": {
+      "label": "Rogue agent tries to rewrite its own rules (call the owner-only set_policy) \u2192 refused: ERR_NOT_OWNER",
+      "tx": "4oEXGqsB1vYo4U2Dyk6AT5Py79mECCPsL38Nu1TjJ6za"
+    },
+    "rogue_pool": {
+      "label": "Rogue agent tries to swap through a pool you never allowed (pool 1) \u2192 refused: ERR_POOL_NOT_ALLOWED",
+      "tx": "BR29DVG9yDabQuNUZReNFiCx5q5UajSk67cm5nk9DpKb"
+    },
+    "rogue_borrow": {
+      "label": "Rogue agent tries to borrow 8 USDC, which would drop the health factor below your 1.5 floor \u2192 refused: policy_violation: min_health_factor",
+      "tx": "D1Qc4VegqBq8fhFFs5ZicdHTM2rzo1EN7QgXenEnzjEq"
+    },
+    "rogue_cap": {
+      "label": "Rogue agent tries to swap 3 wNEAR out of the vault at once (your per-action cap is 2) \u2192 refused: ERR_PER_ACTION_CAP",
+      "tx": "7eNq5rmn7UHfKXCuBHmpe1eW6YmHuZDSVG9NuXmQawM4"
+    }
+  },
+  "funded": true,
+  "owner": "alice-trellis-mw6tffvj.testnet",
+  "vault": "v866c8a018d8854a3.app.trellis-mw6t5fzt.testnet",
+  "position": true,
+  "agent_tee": {
+    "provider": "OutLayer",
+    "api": "https://testnet-api.outlayer.ai",
+    "wallet_id": "21f8972a-72c3-412a-aeba-2689c97466c4"
+  },
+  "fc_agent": "agent.trellis-mw6t5fzt.testnet",
+  "price_e8": "175000000",
+  "tee_check": {
+    "at": "2026-11-08T19:26:50.528Z",
+    "agent": "a48ed23b485f0d5899757f37ac41c8c1ad25e9477e5aab7ed185bd341998d7cc",
+    "agent_keys": 1,
+    "agent_key_is_implicit": true,
+    "vault_access_keys": 0,
+    "keystore_dao": "dao.outlayer.testnet",
+    "mpc_contract": "v1.signer-prod.testnet",
+    "approved_measurements": 19,
+    "approved_keystores": 15,
+    "dao_members": 1,
+    "worker_registry": "worker.outlayer.testnet",
+    "attested_worker_keys": 52,
+    "example_measurement": {
+      "mrtd": "7fe60787222bd394cb516abca2435f22f035ab2cc9c0a4b4b3b148e46297f3d931a237b72f359052c6e657d8c1409173"
+    }
+  }
+}
