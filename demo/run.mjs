@@ -5,6 +5,10 @@
 //   It replays a recorded run of the live demo: the vault, its leveraged position, and what the
 //   agent did when NEAR crashed to $1.75. No Rust, no sandbox, no worker. Nothing is signed.
 //
+// `pnpm demo:testnet` (light): the real thing on NEAR testnet (after `pnpm -C worker testnet:setup`).
+//   Starts the testnet runner (worker, price keeper, control API; worker/src/testnet/run.ts) and the web app
+//   signing as the testnet demo user. Every move is a public testnet transaction.
+//
 // `pnpm demo:live` (HEAVY, needs ~4–6 GB free RAM): the real thing, locally.
 //   1. builds the contracts if needed (cargo near)
 //   2. starts a NEAR sandbox with real Rhea (Burrow), Ref and wNEAR code, the Trellis factory,
@@ -19,10 +23,13 @@ import { createServer } from "node:net";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const LIVE = process.argv.includes("--live");
+const TESTNET = process.argv.includes("--testnet");
+// `pnpm demo:testnet-replay` (light): the replay of the recorded testnet run, with real testnet tx links.
+const REPLAY_TESTNET = process.argv.includes("--replay-testnet");
+const LIVE = process.argv.includes("--live") || TESTNET;
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const CONTRACTS = join(ROOT, "contracts");
-const STATE = join(ROOT, "demo", ".state.json");
+const STATE = join(ROOT, "demo", TESTNET ? ".state.testnet.json" : ".state.json");
 const PORTS = { web: 3000, worker: 8787, control: 8788 };
 const MEM_LOG = join(ROOT, "demo", ".mem.log");
 const MEM_LIMIT_MB = Number(process.env.DEMO_MAX_MEM_MB ?? (LIVE ? 6144 : 3072));
@@ -47,7 +54,7 @@ function need(cmd, args, hint) {
 const nodeMajor = Number(process.versions.node.split(".")[0]);
 if (nodeMajor < 22) fail(`Node 22+ needed (you have ${process.versions.node}).`);
 need("pnpm", ["--version"], "Install pnpm: `npm i -g pnpm`");
-if (LIVE) {
+if (LIVE && !TESTNET) {
   need("cargo", ["--version"], "Install Rust: https://rustup.rs");
   need("cargo", ["near", "--version"], "Install cargo-near 0.22: `cargo install cargo-near --version 0.22.0 --locked`");
 }
@@ -61,7 +68,7 @@ function newest(dir) {
   }
   return t;
 }
-for (const [crate, wasm] of LIVE
+for (const [crate, wasm] of LIVE && !TESTNET
   ? [
       ["vault", "trellis_vault"],
       ["factory", "trellis_factory"],
@@ -94,7 +101,7 @@ for (const [name, port] of Object.entries(LIVE ? PORTS : { web: PORTS.web })) {
   if (!(await free(port))) fail(`port ${port} (${name}) is busy. Stop whatever uses it and try again.`);
 }
 // a sandbox left over from a crashed run keeps using memory: refuse to stack another one
-const stale = LIVE ? spawnSync("pgrep", ["-fl", "near-sandbox"]).stdout?.toString().trim() : "";
+const stale = LIVE && !TESTNET ? spawnSync("pgrep", ["-fl", "near-sandbox"]).stdout?.toString().trim() : "";
 if (stale) fail(`a NEAR sandbox from an earlier run is still running:\n${stale}\nStop it with: pkill -f near-sandbox`);
 
 // ── processes ──────────────────────────────────────────────────────────────
@@ -158,26 +165,34 @@ if (!LIVE) {
   startWeb(null);
 } else {
 rmSync(STATE, { force: true });
-say("starting the NEAR sandbox (first run downloads Rhea/Ref code from mainnet; 1–3 minutes)…");
-const launcher = spawn(
-  "cargo",
-  ["test", "-p", "integration-tests", "--test", "demo", "--", "--ignored", "--nocapture"],
-  {
-    cwd: CONTRACTS,
-    detached: true,
-    env: { ...CARGO_ENV, DEMO_STATE_FILE: STATE, DEMO_WORKER_PORT: String(PORTS.worker), DEMO_CONTROL_PORT: String(PORTS.control) },
-    stdio: ["ignore", "pipe", "pipe"],
-  },
-);
+if (TESTNET && !existsSync(join(ROOT, "testnet", "deployment.json"))) fail("Trellis isn't deployed on testnet yet: run `pnpm -C worker testnet:setup` first.");
+say(TESTNET ? "starting the testnet runner (worker, price keeper)…" : "starting the NEAR sandbox (first run downloads Rhea/Ref code from mainnet; 1–3 minutes)…");
+const launcher = TESTNET
+  ? spawn(join(ROOT, "worker/node_modules/.bin/tsx"), ["src/testnet/run.ts"], {
+      cwd: join(ROOT, "worker"),
+      detached: true,
+      env: { ...process.env, WORKER_PORT: String(PORTS.worker), CONTROL_PORT: String(PORTS.control) },
+      stdio: ["ignore", "pipe", "pipe"],
+    })
+  : spawn(
+      "cargo",
+      ["test", "-p", "integration-tests", "--test", "demo", "--", "--ignored", "--nocapture"],
+      {
+        cwd: CONTRACTS,
+        detached: true,
+        env: { ...CARGO_ENV, DEMO_STATE_FILE: STATE, DEMO_WORKER_PORT: String(PORTS.worker), DEMO_CONTROL_PORT: String(PORTS.control) },
+        stdio: ["ignore", "pipe", "pipe"],
+      },
+    );
 children.push(launcher);
 const tail = [];
 let ready = false;
 const onLine = (line) => {
   tail.push(line);
   if (tail.length > 60) tail.shift();
-  const step = line.match(/^DEMO_STEP (.*)/);
+  const step = line.match(/^(?:DEMO_STEP |▸ )(.*)/);
   if (step) say(step[1]);
-  const done = line.match(/^DEMO_READY (.*)/);
+  const done = line.match(/^(?:DEMO|TESTNET)_READY (.*)/);
   if (done && !ready) {
     ready = true;
     startWeb();
@@ -197,29 +212,57 @@ for (const stream of [launcher.stdout, launcher.stderr]) {
 launcher.on("exit", (code) => {
   if (stopping) return;
   console.error(tail.filter((l) => !/Tgas|^\s*$/.test(l)).slice(-30).join("\n"));
-  fail(`the sandbox launcher stopped (exit ${code})${ready ? "" : " before the demo was ready"}.`);
+  fail(`the ${TESTNET ? "testnet runner" : "sandbox launcher"} stopped (exit ${code})${ready ? "" : " before the demo was ready"}.`);
 });
+}
+
+// the testnet deployment's public ids (testnet/deployment.json), for the testnet replay
+function replayTestnetEnv() {
+  const d = JSON.parse(readFileSync(join(ROOT, "testnet", "deployment.json"), "utf8"));
+  return {
+    NEXT_PUBLIC_NEAR_NETWORK: "testnet",
+    NEXT_PUBLIC_TRELLIS_FACTORY: d.factory,
+    NEXT_PUBLIC_TRELLIS_AGENT: d.agent,
+    NEXT_PUBLIC_BURROW: d.burrow,
+    NEXT_PUBLIC_ORACLE: d.oracle,
+    NEXT_PUBLIC_REF_EXCHANGE: d.ref,
+    NEXT_PUBLIC_WRAP: d.wrap,
+    NEXT_PUBLIC_USDC: d.usdc,
+    NEXT_PUBLIC_REF_POOL: String(d.pool_id),
+  };
 }
 
 function startWeb() {
   const s = LIVE ? JSON.parse(readFileSync(STATE, "utf8")) : null;
-  say(LIVE ? "sandbox ready. Starting the web app…" : "starting the web app (replay demo, light mode)…");
+  say(LIVE ? `${TESTNET ? "testnet" : "sandbox"} ready. Starting the web app…` : "starting the web app (replay demo, light mode)…");
   const env = s
     ? {
         DEMO_MODE: "1",
         NEXT_PUBLIC_DEMO_MODE: "1",
         DEMO_STATE_FILE: STATE,
-        NEXT_PUBLIC_NEAR_RPC_URLS: s.rpcUrl,
+        NEXT_PUBLIC_NEAR_RPC_URLS: (s.rpcUrls ?? [s.rpcUrl]).join(","),
         NEXT_PUBLIC_TRELLIS_FACTORY: s.factory,
         NEXT_PUBLIC_TRELLIS_AGENT: s.agent,
         WORKER_URL: s.workerUrl,
         WORKER_API_TOKEN: s.workerToken,
+        ...(s.contracts
+          ? {
+              NEXT_PUBLIC_NEAR_NETWORK: "testnet",
+              NEXT_PUBLIC_BURROW: s.contracts.burrow,
+              NEXT_PUBLIC_ORACLE: s.contracts.oracle,
+              NEXT_PUBLIC_REF_EXCHANGE: s.contracts.ref,
+              NEXT_PUBLIC_WRAP: s.contracts.wrap,
+              NEXT_PUBLIC_USDC: s.contracts.usdc,
+              NEXT_PUBLIC_REF_POOL: String(s.contracts.pool),
+            }
+          : {}),
       }
     : {
         DEMO_MODE: "replay",
         NEXT_PUBLIC_DEMO_MODE: "replay",
         NEXT_PUBLIC_TRELLIS_FACTORY: "trellis.test.near",
         NEXT_PUBLIC_TRELLIS_AGENT: "agent.test.near",
+        ...(REPLAY_TESTNET ? replayTestnetEnv() : {}),
       };
   const web = spawn("pnpm", ["dev", "--port", String(PORTS.web)], {
     cwd: join(ROOT, "web"),
@@ -252,14 +295,14 @@ function startWeb() {
       console.log(`
 \x1b[1mTrellis demo is running\x1b[0m  →  \x1b[4mhttp://localhost:${PORTS.web}/vault\x1b[0m
 
-  You are ${s.accountId}. Your vault ${s.vault} holds a ~1.25x leveraged wNEAR position
-  (30 wNEAR collateral, 30 USDC debt) and the Trellis agent is watching it.
+  You are ${s.accountId}. Your vault ${s.vault} holds a leveraged wNEAR position
+  ${TESTNET ? "on NEAR testnet (every action is a public transaction); the agent's key is held in OutLayer's TEE" : "(30 wNEAR collateral, 30 USDC debt)"} and the Trellis agent is watching it.
 
   Try:  Vault page → "Crash NEAR to $1.75" and watch the agent deleverage on its own (⚡),
         then the Feed page. Owner controls (pause, rules, withdraw) sign as the demo user.
   Chat needs a NEAR AI key in web/.env.local (NEARAI_API_KEY); everything else works without it.
 
-  Worker log: ${s.workerLog}
+  Worker log: ${s.workerLog ?? join(ROOT, "testnet", "worker-data", "worker.log")}
   Memory log: demo/.mem.log (the demo stops itself above ${(MEM_LIMIT_MB / 1024).toFixed(1)} GB)
   Ctrl-C to stop.
 `);
