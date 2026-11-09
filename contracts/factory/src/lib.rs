@@ -34,11 +34,26 @@ pub enum CodeMode {
     Local,
 }
 
+/// The protocol contracts every new vault is bound to (same shape as the vault's `Protocols`).
+/// Fixed when the factory is created and passed to each vault's `new`; `None` means the vault's mainnet
+/// defaults. A testnet deployment uses it to point vaults at its own Burrow, Ref and oracle.
+#[near(serializers = [borsh, json])]
+#[derive(Clone, Debug, PartialEq)]
+pub struct Protocols {
+    pub burrow: AccountId,
+    pub ref_exchange: AccountId,
+    pub oracle: AccountId,
+    pub intents: AccountId,
+    pub wrap: AccountId,
+}
+
 #[near(contract_state)]
 #[derive(PanicOnDefault)]
 pub struct Factory {
     admin: AccountId,
     mode: CodeMode,
+    /// Set once at init; no method changes it, so the admin can't later point new vaults at look-alikes.
+    protocols: Option<Protocols>,
     /// owner → vault
     vaults: LookupMap<AccountId, AccountId>,
     vault_count: u64,
@@ -49,10 +64,11 @@ pub struct Factory {
 #[near]
 impl Factory {
     #[init]
-    pub fn new(admin: AccountId, mode: CodeMode) -> Self {
+    pub fn new(admin: AccountId, mode: CodeMode, protocols: Option<Protocols>) -> Self {
         Self {
             admin,
             mode,
+            protocols,
             vaults: LookupMap::new(StorageKey::Vaults),
             vault_count: 0,
             refunds: LookupMap::new(StorageKey::Refunds),
@@ -123,7 +139,7 @@ impl Factory {
         batch
             .function_call(
                 "new".to_string(),
-                json!({ "owner": owner }).to_string().into_bytes(),
+                self.vault_init_args(&owner),
                 NearToken::from_yoctonear(0),
                 GAS_INIT,
             )
@@ -198,9 +214,23 @@ impl Factory {
     pub fn get_vault_count(&self) -> u64 {
         self.vault_count
     }
+
+    /// `None`: new vaults use the mainnet contracts.
+    pub fn get_protocols(&self) -> Option<Protocols> {
+        self.protocols.clone()
+    }
 }
 
 impl Factory {
+    fn vault_init_args(&self, owner: &AccountId) -> Vec<u8> {
+        match &self.protocols {
+            Some(p) => json!({ "owner": owner, "protocols": p }),
+            None => json!({ "owner": owner }),
+        }
+        .to_string()
+        .into_bytes()
+    }
+
     fn free_balance(&self) -> u128 {
         let storage = (env::storage_usage() as u128).saturating_mul(env::storage_byte_cost().as_yoctonear());
         env::account_balance().as_yoctonear().saturating_sub(storage)
@@ -256,7 +286,7 @@ mod tests {
     #[should_panic(expected = "ERR_VAULT_EXISTS")]
     fn one_vault_per_owner() {
         ctx("admin.near", NearToken::from_near(0));
-        let mut f = Factory::new("admin.near".parse().unwrap(), CodeMode::Global { code_hash: [7u8; 32].into() });
+        let mut f = Factory::new("admin.near".parse().unwrap(), CodeMode::Global { code_hash: [7u8; 32].into() }, None);
         ctx("alice.near", NearToken::from_near(2));
         let _ = f.create_vault();
         let _ = f.create_vault();
@@ -266,7 +296,7 @@ mod tests {
     #[should_panic(expected = "ERR_DEPOSIT_TOO_SMALL")]
     fn needs_deposit() {
         ctx("admin.near", NearToken::from_near(0));
-        let mut f = Factory::new("admin.near".parse().unwrap(), CodeMode::Global { code_hash: [7u8; 32].into() });
+        let mut f = Factory::new("admin.near".parse().unwrap(), CodeMode::Global { code_hash: [7u8; 32].into() }, None);
         ctx("alice.near", NearToken::from_millinear(100));
         let _ = f.create_vault();
     }
@@ -275,8 +305,30 @@ mod tests {
     #[should_panic(expected = "ERR_NOT_ADMIN")]
     fn only_admin_sets_mode() {
         ctx("admin.near", NearToken::from_near(0));
-        let mut f = Factory::new("admin.near".parse().unwrap(), CodeMode::Local);
+        let mut f = Factory::new("admin.near".parse().unwrap(), CodeMode::Local, None);
         ctx("mallory.near", NearToken::from_near(0));
         f.set_mode(CodeMode::Local);
+    }
+
+    #[test]
+    fn passes_protocols_to_new_vaults() {
+        ctx("admin.near", NearToken::from_near(0));
+        let p = Protocols {
+            burrow: "burrow.t.testnet".parse().unwrap(),
+            ref_exchange: "ref.t.testnet".parse().unwrap(),
+            oracle: "oracle.t.testnet".parse().unwrap(),
+            intents: "intents.near".parse().unwrap(),
+            wrap: "wrap.testnet".parse().unwrap(),
+        };
+        let f = Factory::new("admin.near".parse().unwrap(), CodeMode::Local, Some(p.clone()));
+        let args: near_sdk::serde_json::Value = near_sdk::serde_json::from_slice(&f.vault_init_args(&"alice.testnet".parse().unwrap())).unwrap();
+        assert_eq!(args["owner"], "alice.testnet");
+        assert_eq!(args["protocols"]["burrow"], "burrow.t.testnet");
+        assert_eq!(args["protocols"]["ref_exchange"], "ref.t.testnet");
+        assert_eq!(f.get_protocols(), Some(p));
+
+        let mainnet = Factory::new("admin.near".parse().unwrap(), CodeMode::Local, None);
+        let args: near_sdk::serde_json::Value = near_sdk::serde_json::from_slice(&mainnet.vault_init_args(&"alice.near".parse().unwrap())).unwrap();
+        assert!(args.get("protocols").is_none(), "mainnet factories leave the vault's defaults");
     }
 }
