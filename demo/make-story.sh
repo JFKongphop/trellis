@@ -10,7 +10,7 @@ export HYPERFRAMES_PYTHON=${HYPERFRAMES_PYTHON:-$HOME/.cache/hf-tts-venv/bin/pyt
 rm -rf demo-video/story-take
 CAPTIONS=0 PACE=1.4 node $SKILL/record.mjs --scenario demo/story-scenario.mjs --base-url http://localhost:3000 \
   --out demo-video/story-take --viewport 1440x810 --scale 2 | grep -E '✓|✅|❌'
-grep -q . demo-video/story-take/raw/take.webm
+ls demo-video/story-take/raw/take.* >/dev/null  # the recorder writes take.mp4 (older versions: take.webm)
 node $SKILL/edit.mjs --out demo-video/story-take
 rm -f demo-video/story/assets/shot-*
 node demo/compose-story.mjs
