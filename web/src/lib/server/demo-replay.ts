@@ -371,6 +371,31 @@ export function replayVaultPlan(): { plan: VaultPlan; approval: { token: string;
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+/** Short recorded answers for the example questions; anything else (e.g. "loop my vault") gets the loop plan. */
+function replayAnswer(msg: UIMessage | undefined): string | null {
+  const q = (msg?.parts ?? []).map((p) => (p.type === "text" ? p.text : "")).join(" ").toLowerCase();
+  const w = world();
+  const hf = hfOf(w.coll, w.debt, w.price);
+  const f = (x: number, d = 2) => x.toFixed(d);
+  const tail = "\n\n_This is a replay of the recorded testnet run, so answers are scripted. Try **loop my vault to 1.8x** to see a full plan._";
+  if (/health|liquidat/.test(q)) {
+    return `Your vault's health factor is **${hf ? f(hf) : "∞"}** on Rhea Lending: ${f(w.coll, 4)} wNEAR collateral ($${f(w.coll * w.price)}) against ${f(w.debt, 4)} USDC of debt, with NEAR at $${f(w.price)}. Your rules keep it above **1.5**, and the agent repays debt on its own if a crash pushes it lower.${tail}`;
+  }
+  if (/wallet|balance|what do i (have|own)|holdings/.test(q)) {
+    return `Your wallet (${REPLAY.owner}) holds **${REPLAY.ownerNear} NEAR**, **${RUN.ownerWnear} wNEAR** and **${RUN.ownerUsdc} USDC**. Your vault holds ${f(w.coll, 4)} wNEAR as collateral on Rhea Lending, ${f(w.vaultWnear, 4)} idle wNEAR, and owes ${f(w.debt, 4)} USDC.${tail}`;
+  }
+  if (/yield|apr|apy|earn|interest|borrowing cost|cost to borrow/.test(q)) {
+    return `On this testnet copy of Rhea Lending, USDC rates are close to **0%**, because almost nothing is borrowed (about ${f(w.debt)} USDC of 10,000 supplied). On mainnet, Trellis reads Rhea's live rates and compares supplying USDC with looping wNEAR. Borrowing cost is variable: it rises with utilization, and interest slowly lowers your health factor, which the Guardian flags before you sign.${tail}`;
+  }
+  if (/base|bridge|cross.?chain|intents|deposit/.test(q)) {
+    return "Trellis brings funds from other chains through **NEAR Intents**: you get a deposit address on Base, send USDC there, and it arrives on NEAR as USDC in about a minute. Intents runs on mainnet only, so this testnet replay can't show a live deposit." + tail;
+  }
+  if (/how .*(loop|leverage)|what is (a )?(loop|leverage)/.test(q)) {
+    return "A leverage loop: supply wNEAR as collateral, **borrow** USDC against it, **swap** the USDC to more wNEAR, and **supply** that too. Each round adds NEAR exposure and lowers the health factor. In a Trellis vault the agent can only do this inside your rules (allowed pools, daily caps, minimum health factor), and the vault contract checks every step on-chain." + tail;
+  }
+  return null;
+}
+
 /** Scripted assistant turn: text, then (first turn) the proposeVaultActions tool call. */
 export function replayChatResponse(messages: UIMessage[]): Response {
   const last = messages[messages.length - 1];
@@ -388,7 +413,11 @@ export function replayChatResponse(messages: UIMessage[]): Response {
       };
       writer.write({ type: "start" });
       writer.write({ type: "start-step" });
-      if (!followUp) {
+      const answer = followUp ? null : replayAnswer(last);
+      if (answer) {
+        await sleep(400);
+        await say(answer);
+      } else if (!followUp) {
         await sleep(500);
         await say(
           "Your vault is at **1.25x** with a health factor of **3.56**, so there's room to loop. Here's a plan to reach about **1.8x** while staying above your 1.5 minimum:",
