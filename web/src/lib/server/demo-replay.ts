@@ -6,7 +6,7 @@ import "server-only";
 // State lives on globalThis so every route handler sees the same replay.
 import { TOKENS, WRAP_NEAR } from "@/lib/near/config";
 import type { AccountBalances, TokenBalance } from "@/lib/near/balances";
-import type { LendingPosition } from "@/lib/near/burrow";
+import type { LendingMarket, LendingPosition } from "@/lib/near/burrow";
 import type { VaultPolicy, VaultReceipt, VaultStatus, VaultTokenInfo } from "@/lib/near/vault";
 import type { FeedItem, FeedResponse } from "@/lib/feed";
 import type { DemoInfo } from "@/lib/demo";
@@ -190,6 +190,29 @@ export function replayBalances(account: string): AccountBalances {
   if (account === REPLAY.vault) return vaultBalances(w);
   const rows = [tokenRow("near", "NEAR", 24, REPLAY.ownerNear, w.price), tokenRow(WRAP_NEAR, "wNEAR", 24, RUN.ownerWnear, w.price), tokenRow(USDC, "USDC", 6, RUN.ownerUsdc, 1)];
   return { accountId: account, exists: account === REPLAY.owner, balances: account === REPLAY.owner ? rows : [], totalUsd: account === REPLAY.owner ? rows.reduce((s, r) => s + (r.valueUsd ?? 0), 0) : 0 };
+}
+
+/** Lending markets as the recorded run left them (testnet Burrow: 10,000 USDC of seeded liquidity, the vault's wNEAR). */
+export function replayMarkets(): LendingMarket[] {
+  const w = world();
+  const usdcSupplied = 10_000;
+  // APRs as testnet Burrow reported them after the run (almost nothing is borrowed, so they are near zero)
+  const market = (tokenId: string, symbol: string, supplied: number, borrowed: number, price: number, cf: number, supplyApr: number, borrowApr: number): LendingMarket => {
+    const util = supplied > 0 ? borrowed / supplied : 0;
+    return {
+      tokenId, symbol,
+      supplyAprPct: supplyApr,
+      borrowAprPct: borrowApr,
+      utilizationPct: util * 100,
+      totalSupplied: supplied, totalBorrowed: borrowed, availableLiquidity: supplied - borrowed,
+      totalSuppliedUsd: supplied * price, availableLiquidityUsd: (supplied - borrowed) * price, priceUsd: price,
+      collateralFactorPct: cf, canBorrow: true, canUseAsCollateral: true, canDeposit: true, verified: true,
+    };
+  };
+  return [
+    market(USDC, "USDC", usdcSupplied, w.debt, 1, 95, 0.000000135, 0.00114),
+    market(WRAP_NEAR, "wNEAR", w.coll, 0, w.price, 75, 0, 0),
+  ];
 }
 
 export function replayPosition(account: string): LendingPosition {
