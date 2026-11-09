@@ -1,0 +1,14 @@
+{
+  "name": "trellis",
+  "private": true,
+  "description": "Trellis: an AI DeFi agent on NEAR that acts only inside your policy vault",
+  "scripts": {
+    "demo": "node demo/run.mjs",
+    "demo:live": "node demo/run.mjs --live",
+    "demo:testnet": "node demo/run.mjs --testnet",
+    "demo:testnet-replay": "node demo/run.mjs --replay-testnet"
+  },
+  "devDependencies": {
+    "playwright": "1.64.1"
+  }
+}
