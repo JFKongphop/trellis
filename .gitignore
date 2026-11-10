@@ -24,3 +24,21 @@ next-env.d.ts
 
 # Claude local settings
 .claude/settings.local.json
+
+# Demo mode runtime state (sandbox keys, URLs)
+demo/.state.json
+demo/.state.testnet.json
+# testnet worker data (reasoning log, worker log)
+testnet/worker-data/
+demo/.mem.log
+# pnpm writes an empty lockfile for the root `demo` scripts; not needed
+/pnpm-lock.yaml
+
+# demo video work files (final MP4s: demo-video/trellis-story.mp4, demo-video/demo-hyperframes.mp4)
+demo-video
+
+# personal drafts
+x-post.txt
+*.mp4
+
+commit.sh
