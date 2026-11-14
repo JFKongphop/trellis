@@ -57,13 +57,19 @@ pnpm -C worker testnet:rogue       # the rogue-agent attempts
 pnpm -C worker testnet:verify-tee  # the TEE checks (read-only)
 ```
 
-### A link anyone can open: the testnet replay
+### A link anyone can open: [trellis.quest](https://www.trellis.quest/)
 
-The web app can replay the recorded testnet run: the same vault, the same three automatic moves, and every **tx ↗** opens the real transaction on testnet.nearblocks.io. Nothing runs or signs in the background, so it can be hosted for free. On Vercel, import the repo with **Root Directory** `web` and these environment variables:
+The live web app on NEAR testnet. No install and no money needed:
+
+1. Open [trellis.quest](https://www.trellis.quest/) and click a suggested question, e.g. **"show me the demo vault"**.
+2. Without a wallet, the agent reads the **live demo vault** on testnet: its Rhea position (health factor, collateral, debt), its rules, and the agent's on-chain history, including the rogue moves the contract refused.
+3. Click **Connect** (top right) to use your own testnet wallet: the agent then reads your balances and position, and **Vault → Set up** creates your own vault through the factory.
+
+Chat runs on NEAR AI Cloud (Qwen 3.6 in a TEE). The worker is not hosted, so plans that the vault agent runs for you need `pnpm demo:testnet` locally. Cross-chain funding (NEAR Intents) is mainnet-only and is turned off on testnet.
+
+To host your own copy on Vercel, import the repo with **Root Directory** `web` and these environment variables:
 
 ```bash
-DEMO_MODE=replay
-NEXT_PUBLIC_DEMO_MODE=replay
 NEXT_PUBLIC_NEAR_NETWORK=testnet
 NEXT_PUBLIC_TRELLIS_FACTORY=app.trellis-mw6t5fzt.testnet
 NEXT_PUBLIC_TRELLIS_AGENT=a48ed23b485f0d5899757f37ac41c8c1ad25e9477e5aab7ed185bd341998d7cc
@@ -74,7 +80,11 @@ NEXT_PUBLIC_WRAP=wrap.testnet
 NEXT_PUBLIC_USDC=usdc.trellis-mw6t5fzt.testnet
 NEXT_PUBLIC_REF_POOL=0
 API_SIGNING_SECRET=<openssl rand -hex 32>
+NEARAI_API_KEY=<key from cloud.near.ai>
+NEARAI_MODEL=Qwen/Qwen3.6-35B-A3B-FP8
 ```
+
+To host the replay of the recorded testnet run instead (no chat key needed, nothing signed), also set `DEMO_MODE=replay` and `NEXT_PUBLIC_DEMO_MODE=replay`.
 
 ---
 
