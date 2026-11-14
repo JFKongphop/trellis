@@ -14,7 +14,7 @@ import { demoEnabled, demoPrice } from "@/lib/server/demo";
 // Identify tokens by account id; "verified" = Ref-whitelisted or well-known.
 
 import { view } from "@/lib/near/rpc";
-import { REF_EXCHANGE, TOKENS, WRAP_NEAR } from "@/lib/near/config";
+import { NEAR_NETWORK, REF_EXCHANGE, TOKENS, WRAP_NEAR } from "@/lib/near/config";
 
 const REF_INDEXER = "https://indexer.ref.finance";
 
@@ -162,6 +162,13 @@ export async function pricesUsd(ids: string[]): Promise<Record<string, number>> 
   for (const id of ids) {
     const p = Number(all[id]?.price);
     if (Number.isFinite(p) && p > 0) out[id] = p;
+  }
+  // Testnet: Ref's price list only knows mainnet ids, so wNEAR shows mainnet NEAR's price and our
+  // mock USDC shows $1 (display only, like every price here).
+  if (NEAR_NETWORK === "testnet") {
+    const nearUsd = Number(all["wrap.near"]?.price);
+    if (ids.includes(WRAP_NEAR) && out[WRAP_NEAR] === undefined && Number.isFinite(nearUsd) && nearUsd > 0) out[WRAP_NEAR] = nearUsd;
+    if (ids.includes(TOKENS.USDC) && out[TOKENS.USDC] === undefined) out[TOKENS.USDC] = 1;
   }
   // Demo mode: NEAR follows the sandbox oracle so a simulated crash shows everywhere.
   if (demoEnabled() && ids.includes(WRAP_NEAR)) {

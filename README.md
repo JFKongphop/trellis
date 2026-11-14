@@ -8,7 +8,7 @@ You set the rules once: which tokens and pools, how much per action and per day,
 
 NEAR Hackathon 2026. Tracks: **Unstoppable DeFi** (main), **AI Security & Defense**.
 
-**Demo video:** _add link_ · **Try it without installing:** _add link_
+**Demo video:** _add link_ · **Try it without installing:** [trellis.quest](https://www.trellis.quest/)
 
 ---
 
