@@ -1,5 +1,6 @@
 import "server-only";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
+import { isKnownModel } from "@/lib/ai/pricing";
 
 // NEAR AI Cloud (OpenAI-compatible) via @ai-sdk/openai-compatible@2.0.87, the
 // AI-SDK-v6 line (dist-tag `ai-v6`; 3.x targets ai@7). See the
@@ -18,7 +19,10 @@ const nearai = createOpenAICompatible({
 });
 
 /** Default chat model. Override with NEARAI_MODEL. */
-export const DEFAULT_MODEL = process.env.NEARAI_MODEL || "z-ai/glm-5.3-flash";
+export const DEFAULT_MODEL =
+  process.env.NEARAI_MODEL && isKnownModel(process.env.NEARAI_MODEL)
+    ? process.env.NEARAI_MODEL
+    : "Qwen/Qwen3.6-35B-A3B-FP8";
 
 // NEAR AI Cloud has no gateway-side model fallback (unlike OpenRouter). The
 // user can switch model in the input; automatic retry on a second model is a

@@ -3,23 +3,17 @@
 // math, safe for client and server. Re-check before the demo: ids change.
 
 export const MODEL_PRICING = {
-  "z-ai/glm-5.3-flash": {
-    inputPer1M: 0.08,
-    cachedInputPer1M: 0.012,
-    outputPer1M: 0.5,
-    name: "Trellis Flash",
-    description:
-      "GLM 5.3 Flash in a NEAR AI TEE. Fast default for reads, plans and quick questions.",
-    isDefault: true,
-  },
   "Qwen/Qwen3.6-35B-A3B-FP8": {
     inputPer1M: 0.17,
     cachedInputPer1M: 0.056,
     outputPer1M: 1.1,
-    name: "Trellis Plus",
+    name: "Trellis",
     description:
-      "Qwen 3.6 35B in a NEAR AI TEE. More careful multi-step planning and risk explanations.",
+      "Qwen 3.6 35B in a NEAR AI TEE. Fast, with thinking off.",
+    isDefault: true,
   },
+  // GLM 5.3 Flash was removed on 2026-11-15: on NEAR AI Cloud it ignored "thinking off" and looped
+  // its hidden reasoning for minutes ("Done. Good. Done…").
 } as Record<
   string,
   {
