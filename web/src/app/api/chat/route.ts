@@ -127,6 +127,8 @@ export async function POST(req: Request) {
         // Spread into the request body by @ai-sdk/openai-compatible. NEAR AI
         // TEE models toggle thinking via chat_template_kwargs (near-ai-cloud.md §1).
         chat_template_kwargs: { enable_thinking: runtime.thinking },
+        // GLM ignores the kwarg above and only stops its long hidden reasoning with this.
+        ...(runtime.thinking ? {} : { reasoningEffort: "low" }),
       },
     },
   });

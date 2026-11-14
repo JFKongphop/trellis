@@ -43,7 +43,7 @@ export async function POST(req: Request) {
         "You explain NEAR blockchain transactions plainly. Trust the decoded line over your assumptions. Never invent amounts. No em dashes.",
       prompt,
       maxOutputTokens: 1500,
-      providerOptions: { nearai: { chat_template_kwargs: { enable_thinking: false } } },
+      providerOptions: { nearai: { chat_template_kwargs: { enable_thinking: false }, reasoningEffort: "low" } },
     });
     const m = text.match(/\{[\s\S]*\}/);
     if (!m) return json({ error: "The model didn't return an explanation." }, 502);
