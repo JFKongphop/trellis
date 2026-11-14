@@ -2,7 +2,7 @@ import { DESTINATION_ASSETS, ORIGIN_ASSETS, validRefundAddress, type IntentsQuot
 import { verifyQuoteSignature, type QuoteRequest } from "@/lib/oneclick/signature";
 import { oneClickQuote, OneClickError } from "@/lib/server/oneclick";
 import { isStorageRegistered } from "@/lib/plan/common";
-import { isValidAccountId } from "@/lib/near/config";
+import { isValidAccountId, NEAR_NETWORK } from "@/lib/near/config";
 import { fromBase, toBase } from "@/lib/near/tx";
 import { readProvider } from "@/lib/near/rpc";
 import { json, errorMessage } from "../../_shared";
@@ -19,6 +19,8 @@ export const maxDuration = 40;
 export async function POST(req: Request) {
   // 1Click is real money on mainnet; the demo's accounts only exist in the local sandbox.
   if (process.env.DEMO_MODE === "1") return json({ error: "Cross-chain funding is off in demo mode: it moves real money on mainnet." }, 400);
+  // Testnet accounts don't exist on mainnet: a real deposit could never arrive.
+  if (NEAR_NETWORK === "testnet") return json({ error: "Cross-chain funding is mainnet-only: NEAR Intents moves real money." }, 400);
   const b = (await req.json().catch(() => null)) as {
     originAsset?: string;
     destinationAsset?: string;

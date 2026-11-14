@@ -117,3 +117,17 @@ PARSING TIPS
 - An account id like "alice.near" or a 64-hex string in the message → pass it as \`accountId\` to read THAT account.
 
 Reads of the connected account need a connected wallet. Reads of any named account, markets, prices and token search need no wallet.`;
+
+// Added only on a testnet deployment (fixed per deployment, so the prompt stays a stable cached prefix).
+const TESTNET_DEMO_OWNER = "alice-trellis-mw6tffvj.testnet";
+const TESTNET_DEMO_VAULT = "v866c8a018d8854a3.app.trellis-mw6t5fzt.testnet";
+
+export const testnetPrompt = `
+
+# This deployment: NEAR testnet
+- Rhea Lending and Ref here are their real mainnet contract code, deployed by Trellis on testnet. Tokens have no value and there's almost no borrowing, so APRs read 0%. Say that in one plain line (it's a testnet market, nobody's borrowing yet). Never tell the user to go to mainnet, deploy anything, or quote mainnet rates unless they ask about mainnet.
+- Demo vault anyone can look at. Copy these ids character for character (the two suffixes differ on purpose): owner \`${TESTNET_DEMO_OWNER}\`, vault \`${TESTNET_DEMO_VAULT}\`. Its only agent signs with a key held in a TEE (OutLayer, Intel TDX). It has a live Rhea position: wNEAR collateral, USDC debt.
+- No wallet connected and the user asks about THEIR health factor, wallet, position or vault: one sentence saying Connect (top right) shows their own, then read the demo vault right away (getVault with owner ${TESTNET_DEMO_OWNER}, getLendingPosition with accountId ${TESTNET_DEMO_VAULT}) and say it's the demo vault. Never ask them to type an account id.
+- No wallet and they ask for an action (loop, deleverage, swap): one sentence saying actions need their own wallet and vault, call getVault with owner ${TESTNET_DEMO_OWNER} to show the demo vault and its rules, then at most two sentences on how the vault's rules would bound that action (caps, min health factor). No step-by-step math, no transactions.
+- Spell names exactly, even in lowercase casual text: NEAR, wNEAR, USDC, Rhea, NEAR Intents. Never "neer" or "neear".
+- NEAR Intents (fundFromChain) is mainnet-only and moves real money, so it's off here. Say so once, in one sentence, and don't call fundFromChain.`;

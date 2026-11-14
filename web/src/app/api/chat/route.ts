@@ -7,7 +7,7 @@ import {
   DEFAULT_MODEL,
 } from "@/lib/ai/nearai";
 import { isKnownModel } from "@/lib/ai/pricing";
-import { systemPrompt } from "@/lib/ai/system-prompt";
+import { systemPrompt, testnetPrompt } from "@/lib/ai/system-prompt";
 import { allTools } from "@/lib/ai/tools";
 import { MAX_USER_MESSAGE_CHARS } from "@/lib/chat-limits";
 import { isValidAccountId, NEAR_NETWORK } from "@/lib/near/config";
@@ -106,7 +106,7 @@ export async function POST(req: Request) {
 
   const result = streamText({
     model: chatModel(modelId),
-    system: systemPrompt,
+    system: NEAR_NETWORK === "testnet" ? systemPrompt + testnetPrompt : systemPrompt,
     messages: modelMessages,
     tools: allTools,
     stopWhen: ({ steps }) => steps.length >= 10,
